@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Expo / Metro output
+.expo/
+dist/
+web-build/
+
+# Native build output
+android/
+ios/
+
+# Reasonix local session state (keep reasonix.toml + AGENTS.md tracked)
+.reasonix/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Local env
+*.local
+.env
+.env.*

@@ -1,0 +1,2 @@
+[permissions]
+allow = ["Bash=command -v unzip; command -v tar; command -v powershell; echo \"---\"; tar --version 2>/dev/null | head -1", "Bash=cd /tmp 2>/dev/null || cd \"$TEMP\"; rm -rf pwa_orig; git clone --depth 1 https://github.com/expertva84-apps/vercel_classrecord.git pwa_orig 2>&1 | tail -20; echo \"EXIT: $?\"", "Bash=cd /tmp/pwa_orig 2>/dev/null && pwd && ls -la; echo \"=== if empty try temp ===\"; ls \"$TEMP/pwa_orig\" 2>/dev/null | head", "Bash=cd /tmp/pwa_orig && pwd -W 2>/dev/null || cygpath -w \"$(pwd)\""]
