@@ -31,3 +31,6 @@ yarn-error.log*
 *.local
 .env
 .env.*
+
+# Temporary verification scratch (never committed)
+.verify-tmp/

@@ -175,7 +175,7 @@ function insertRowInOrder(xml: string, rowNum: string, newRowXml: string): strin
       return xml.slice(0, m.index) + newRowXml + xml.slice(m.index);
     }
   }
-  return xml.replace(/<\/sheetData>/i, `${newRowXml}</sheetData>`);
+  return xml.replace(/<\/sheetData>/i, () => `${newRowXml}</sheetData>`);
 }
 
 function buildCellXml(fullRef: string, value: string | number | null | undefined, styleAttr: string): string {
@@ -196,7 +196,7 @@ export function setSheetCell(xml: string, ref: string, value: string | number | 
   const styleAttr = existing ? extractStyle(existing[1]) : '';
   const newCell = buildCellXml(fullRef, value, styleAttr);
 
-  if (existing) return xml.replace(cellRe, newCell);
+  if (existing) return xml.replace(cellRe, () => newCell);
 
   const rowRe = new RegExp(`(<row[^>]*\\br="${rowNum}"[^>]*>)([\\s\\S]*?)(</row>)`, 'i');
   if (rowRe.test(xml)) {
@@ -225,7 +225,7 @@ function setRowCells(xml: string, rowNum: string, writes: { col: string; value: 
       const existing = inner.match(cRe);
       const styleAttr = existing ? extractStyle(existing[1]) : '';
       const newCell = buildCellXml(fullRef, w.value, styleAttr);
-      inner = existing ? inner.replace(cRe, newCell) : insertCellInOrder(inner, w.col, newCell);
+      inner = existing ? inner.replace(cRe, () => newCell) : insertCellInOrder(inner, w.col, newCell);
     }
     const start = rowMatch.index!;
     return xml.slice(0, start) + rowMatch[1] + inner + rowMatch[3] + xml.slice(start + rowMatch[0].length);

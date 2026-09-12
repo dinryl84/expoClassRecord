@@ -45,7 +45,12 @@ export const ECR_MAP = {
 
   /**
    * TERM 1/2/3 — same layout on each sheet.
-   * Names in column B are formulas: ='INPUT DATA'!L11 etc. — DO NOT OVERWRITE.
+   * Names in column B are formulas in the official template
+   * (='INPUT DATA'!L11 etc.), but imported/hand-filled files often carry a
+   * plain typed name instead, and any formula keeps the *cached* result of
+   * whoever last saved the base file. We therefore overwrite column B with
+   * explicit names on every export (see termNameCell) so it can never show a
+   * different class's roster — same fix as the PWA.
    * Computed cols (Total/PS/WS/IG/TG/LG) are formulas — DO NOT OVERWRITE.
    */
   term: {
@@ -56,6 +61,9 @@ export const ECR_MAP = {
     femaleHeaderRow: 63,
     femaleFirstDataRow: 64, // B64 = INPUT DATA!O11
     femaleSlots: 50, // rows 64..113
+
+    /** Name column (same column on the TERM sheets and the AVE roster). */
+    nameCol: 'B',
 
     /** Raw Written Works scores */
     wwCols: ['F', 'G', 'H', 'I', 'J'] as const,
@@ -91,4 +99,13 @@ export function termMaleRow(index0: number): number {
 }
 export function termFemaleRow(index0: number): number {
   return ECR_MAP.term.femaleFirstDataRow + index0;
+}
+
+/**
+ * TERM/AVE name cell (column B) for a given data row. Exported as a literal
+ * name on every export so a stale cached formula can't leak another class's
+ * roster into the file.
+ */
+export function termNameCell(row: number): string {
+  return `${ECR_MAP.term.nameCol}${row}`;
 }
