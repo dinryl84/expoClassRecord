@@ -4,6 +4,7 @@ import type { ComponentScores, Learner, SchoolInfo, Section, Subject } from '@/t
 import { calculateGrade, emptyComponentScores } from './grades';
 import { getSchoolInfo } from '@/db/repositories/schoolInfo';
 import { getTermScoresForSubject } from '@/db/repositories/termScores';
+import { colors } from '@/theme/theme';
 
 function gradeFor(
   learnerId: string,
@@ -31,7 +32,7 @@ function renderTable(
   subjectType: Subject['subjectType']
 ): string {
   if (list.length === 0) return '';
-  const headerColor = label === 'MALE' ? '#8B2626' : '#EF6905';
+  const headerColor = label === 'MALE' ? colors.maroon : colors.orange;
 
   const rows = list
     .map((l) => {
@@ -40,7 +41,7 @@ function renderTable(
       const g3 = gradeFor(l.id, 3, termScores, subjectType);
       const vals = [g1.transmuted, g2.transmuted, g3.transmuted].filter((v): v is number => v != null);
       const avg = vals.length > 0 ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100 : null;
-      const remarkColor = avg != null && avg >= 75 ? '#486C2F' : '#8B2626';
+      const remarkColor = avg != null && avg >= 75 ? colors.green : colors.maroon;
       const remarkText = avg != null ? (avg >= 75 ? 'PASSED' : 'FAILED') : '—';
       return `
         <tr>
@@ -62,7 +63,7 @@ function renderTable(
       </h3>
       <table style="width:100%; border-collapse:collapse; font-size:12px;">
         <thead>
-          <tr style="background:#F1E5A1;">
+          <tr style="background:${colors.cream};">
             <th class="head" style="text-align:left;">#</th>
             <th class="head" style="text-align:left;">Name</th>
             <th class="head">T1</th>
@@ -86,7 +87,8 @@ export function buildClassRecordHtml(section: Section, subject: Subject, school:
       <head>
         <meta charset="utf-8" />
         <style>
-          body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 24px; color: #2A2118; }
+          /* PWA PrintView inherits body text from --color-text (#1a1a1a). */
+          body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 24px; color: ${colors.text}; }
           .head { padding: 6px; border: 1px solid #ccc; }
           .cell { padding: 5px; border: 1px solid #ddd; }
           .cell.name { text-align: left; }

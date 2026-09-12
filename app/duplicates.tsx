@@ -3,10 +3,16 @@ import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-nati
 import { router, useFocusEffect } from 'expo-router';
 import { Header } from '@/components/Header';
 import { Card, Button, Modal, ModalTitle, Field } from '@/components/ui';
-import { colors, radii, spacing } from '@/theme/theme';
+import { colors, spacing } from '@/theme/theme';
 import { getAllSections } from '@/db/repositories/sections';
 import { deleteDuplicateSection, renameDuplicateSection } from '@/db/duplicate';
 import type { Section } from '@/types';
+
+// The PWA DuplicateRecords.tsx draws its Rename chip inline; the light-blue
+// pair it uses is now the colors.infoBg / colors.info token pair.
+// The PWA's inline Rename/Delete chips use borderRadius: 6 — smaller than the
+// --radius-sm (8px) token, so there is nothing to reuse here.
+const CHIP_RADIUS = 6;
 
 export default function Duplicates() {
   const [duplicates, setDuplicates] = useState<Section[]>([]);
@@ -53,40 +59,42 @@ export default function Duplicates() {
       />
       <ScrollView contentContainerStyle={{ padding: spacing.md }}>
         {duplicates.length === 0 ? (
-          <Card style={{ alignItems: 'center', padding: spacing.xl }}>
-            <Text style={{ color: colors.textMuted, marginBottom: 8 }}>
-              No duplicated records yet.
-            </Text>
-            <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center' }}>
+          <Card style={styles.emptyCard}>
+            <Text style={styles.emptyLead}>No duplicated records yet.</Text>
+            <Text style={styles.emptyHint}>
               From a section on your dashboard, tap "⧉ Duplicate" to make an editable copy —
               useful for what-if grade changes, drafts, or backups without touching the original.
             </Text>
           </Card>
         ) : (
-          <View style={{ gap: spacing.sm }}>
+          <View style={styles.list}>
             {duplicates.map((s) => (
               <Pressable key={s.id} onPress={() => router.push(`/section/${s.id}`)}>
                 <Card>
-                  <View style={styles.row}>
-                    <View style={{ flex: 1 }}>
+                  <View style={styles.cardRow}>
+                    <View style={styles.info}>
                       <Text style={styles.name}>{s.name}</Text>
                       <Text style={styles.meta}>
                         Copy of "{s.duplicatedFromName ?? 'a previous section'}"
                         {s.duplicatedAt ? ` · ${new Date(s.duplicatedAt).toLocaleDateString()}` : ''}
                       </Text>
                     </View>
-                    <Pressable
-                      style={styles.smallBtn}
-                      onPress={() => {
-                        setRenaming(s);
-                        setRenameValue(s.name);
-                      }}
-                    >
-                      <Text style={styles.smallBtnText}>Rename</Text>
-                    </Pressable>
-                    <Pressable style={styles.smallBtnRed} onPress={() => handleDelete(s)}>
-                      <Text style={styles.smallBtnRedText}>Delete</Text>
-                    </Pressable>
+                    <View style={styles.actions}>
+                      <Pressable
+                        style={styles.smallBtn}
+                        onPress={() => {
+                          setRenaming(s);
+                          setRenameValue(s.name);
+                        }}
+                      >
+                        <Text style={styles.smallBtnText}>Rename</Text>
+                      </Pressable>
+                      <Pressable style={styles.smallBtnRed} onPress={() => handleDelete(s)}>
+                        <Text style={styles.smallBtnRedText}>Delete</Text>
+                      </Pressable>
+                      {/* PWA chevron affordance after the chips: colour var(--color-accent), fontSize 20 */}
+                      <Text style={styles.chevron}>›</Text>
+                    </View>
                   </View>
                 </Card>
               </Pressable>
@@ -109,21 +117,34 @@ export default function Duplicates() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  row: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  // PWA empty state: a centred .card (textAlign centre, padding 32) in muted text.
+  // Its lead line is a default-size <p> (16px), the hint is the 13px one.
+  emptyCard: { alignItems: 'center', padding: spacing.xl },
+  emptyLead: { fontSize: 16, color: colors.textMuted, marginBottom: spacing.sm },
+  emptyHint: { fontSize: 13, color: colors.textMuted, textAlign: 'center' },
+  // PWA list container: column, gap 12
+  list: { gap: 12 },
+  // PWA row: .card is space-between / centre; left block flex:1 (min-width:0), chips flex-shrink 0
+  cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  info: { flex: 1, minWidth: 0 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 },
   name: { fontWeight: '700', fontSize: 16, color: colors.maroon },
   meta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  // PWA Rename chip: bg '#eef2fb', text '#2b4a8b', padding 6/10, radius 6, 12px (no bold)
   smallBtn: {
-    backgroundColor: colors.cream,
+    backgroundColor: colors.infoBg,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: radii.sm,
+    borderRadius: CHIP_RADIUS,
   },
-  smallBtnText: { color: colors.maroon, fontSize: 12, fontWeight: '600' },
+  smallBtnText: { color: colors.info, fontSize: 12 },
+  // PWA Delete chip: bg errorBg '#fce8e8', text var(--color-primary), padding 6/10, radius 6, 12px
   smallBtnRed: {
-    backgroundColor: '#fce8e8',
+    backgroundColor: colors.errorBg,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: radii.sm,
+    borderRadius: CHIP_RADIUS,
   },
-  smallBtnRedText: { color: colors.maroon, fontSize: 12, fontWeight: '600' },
+  smallBtnRedText: { color: colors.maroon, fontSize: 12 },
+  chevron: { color: colors.orange, fontSize: 20 },
 });

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { Header } from '@/components/Header';
 import { Button, Card, Field } from '@/components/ui';
-import { colors, spacing } from '@/theme/theme';
+import { colors, radii, spacing } from '@/theme/theme';
 import { getSchoolInfo, putSchoolInfo } from '@/db/repositories/schoolInfo';
 import type { SchoolInfo } from '@/types';
 
@@ -16,6 +16,36 @@ const FIELDS: { key: keyof SchoolInfo; label: string }[] = [
   { key: 'teacher', label: 'Teacher Name' },
   { key: 'track', label: 'Track' },
 ];
+
+/**
+ * The PWA draws its Start/End term-date inputs with a small 11px muted `<label>`
+ * above the `.input` box (SchoolSettings.tsx ~lines 725 / 743). The shared `Field`
+ * widget uses a 13px/600 label, so we reproduce the PWA's smaller label here and
+ * mirror the `.input` box inline.
+ */
+function DateField({
+  label,
+  value,
+  onChangeText,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+}) {
+  return (
+    <View style={styles.dateCol}>
+      <Text style={styles.dateLabel}>{label}</Text>
+      <TextInput
+        style={styles.dateInput}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder="YYYY-MM-DD"
+        placeholderTextColor={colors.textMuted}
+        autoCapitalize="none"
+      />
+    </View>
+  );
+}
 
 export default function SchoolSettings() {
   const [info, setInfo] = useState<SchoolInfo>(getSchoolInfo());
@@ -45,6 +75,7 @@ export default function SchoolSettings() {
       <Header title="School Settings" onBack={() => router.back()} />
       <ScrollView contentContainerStyle={{ padding: spacing.md }}>
         <Card>
+          {/* PWA `h2` card heading: 15px / bold / primary, marginBottom 14 */}
           <Text style={styles.cardTitle}>School Info</Text>
           {FIELDS.map((f) => (
             <Field
@@ -55,6 +86,7 @@ export default function SchoolSettings() {
             />
           ))}
 
+          {/* PWA "term dates" block: marginTop 8, paddingTop 14, 1px top border, marginBottom 14 */}
           <View style={styles.termSection}>
             <Text style={styles.termTitle}>Term dates</Text>
             <Text style={styles.termHelp}>
@@ -64,25 +96,11 @@ export default function SchoolSettings() {
             {([1, 2, 3] as const).map((t) => {
               const range = info.termDates?.[t] || { start: '', end: '' };
               return (
-                <View key={t} style={{ marginBottom: spacing.sm }}>
+                <View key={t} style={styles.termRow}>
                   <Text style={styles.termLabel}>Term {t}</Text>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <View style={{ flex: 1 }}>
-                      <Field
-                        label="Start"
-                        value={range.start}
-                        onChangeText={(v) => setTermDate(t, 'start', v)}
-                        placeholder="YYYY-MM-DD"
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Field
-                        label="End"
-                        value={range.end}
-                        onChangeText={(v) => setTermDate(t, 'end', v)}
-                        placeholder="YYYY-MM-DD"
-                      />
-                    </View>
+                  <View style={styles.termInputs}>
+                    <DateField label="Start" value={range.start} onChangeText={(v) => setTermDate(t, 'start', v)} />
+                    <DateField label="End" value={range.end} onChangeText={(v) => setTermDate(t, 'end', v)} />
                   </View>
                 </View>
               );
@@ -91,6 +109,9 @@ export default function SchoolSettings() {
 
           <Button label={saved ? 'Saved ✓' : 'Save'} onPress={handleSave} style={{ marginTop: spacing.sm }} />
         </Card>
+
+        {/* PWA footnote printed under the School Info card (SchoolSettings.tsx ~line 774) */}
+        <Text style={styles.footnote}>School info appears on the exported Excel file.</Text>
 
         <Card style={{ marginTop: spacing.md }}>
           <Text style={styles.cardTitle}>Grade Weights</Text>
@@ -107,14 +128,33 @@ export default function SchoolSettings() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: colors.maroon, marginBottom: spacing.md },
+  // PWA `h2` card headings (School Info / Grade Weights): 15px / bold / primary
+  cardTitle: { fontSize: 15, fontWeight: '700', color: colors.maroon, marginBottom: 14 },
   termSection: {
-    marginTop: spacing.xs,
-    paddingTop: spacing.sm,
+    marginTop: spacing.sm,
+    marginBottom: 14,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  termTitle: { fontWeight: '600', marginBottom: 4, color: colors.text },
-  termHelp: { fontSize: 12, color: colors.textMuted, marginBottom: spacing.sm },
-  termLabel: { fontSize: 13, fontWeight: '600', marginBottom: 6, color: colors.text },
+  // PWA "Term dates" sub-heading: default size (16px) / 600, marginBottom 4
+  termTitle: { fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 4 },
+  termHelp: { fontSize: 12, color: colors.textMuted, marginBottom: 12 },
+  termRow: { marginBottom: 12 },
+  termLabel: { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 6 },
+  termInputs: { flexDirection: 'row', gap: 8 },
+  dateCol: { flex: 1 },
+  dateLabel: { fontSize: 11, color: colors.textMuted, marginBottom: 4 },
+  // PWA `.input`: 1.5px border, radius 8, padding 12/14, 15px text
+  dateInput: {
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: colors.text,
+    backgroundColor: colors.surface,
+  },
+  footnote: { fontSize: 12, color: colors.textMuted, marginTop: 12 },
 });

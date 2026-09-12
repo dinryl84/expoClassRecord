@@ -35,6 +35,11 @@ const EDIT_HIGHLIGHT_COLORS = [
   { id: 'teal', hex: '#00695C' },
 ];
 
+// Literal greys the PWA writes inline on this page (no theme token exists), so
+// they are ported verbatim to keep the two visually identical.
+const GRID_EMPTY_TEXT = '#888'; // PWA ScoreEncoding.tsx renderRows empty-row text
+const GRID_ORDER_TEXT = '#999'; // PWA ScoreEncoding.tsx learner order prefix
+
 const TAB_COLS: Record<
   Tab,
   { field: 'ww' | 'pt' | 'sa1' | 'sa2' | 'te'; label: string; index: number | null }[]
@@ -48,9 +53,11 @@ const TAB_COLS: Record<
   ],
 };
 
-const COL_W = 48;
-const NAME_W = 130;
-const GRADE_W = 96;
+// PWA grid metrics (ScoreEncoding.tsx renderRows / renderHps): score columns
+// are 52px, the sticky learner column 150px, the grade block min 110px.
+const COL_W = 52;
+const NAME_W = 150;
+const GRADE_W = 110;
 
 function getFieldValue(scores: ComponentScores, field: string, index: number | null): number | null {
   if (index !== null) return (scores[field as 'ww' | 'pt'] as (number | null)[])[index] ?? null;
@@ -341,8 +348,7 @@ export default function ScoreEncoding() {
       <TextInput
         style={[
           styles.gridInput,
-          isHps && styles.gridInputHps,
-          edited && { color: highlightColor, fontWeight: '700', borderColor: highlightColor },
+          edited && { color: highlightColor, fontWeight: '700' },
         ]}
         keyboardType="numeric"
         value={value?.toString() ?? ''}
@@ -367,7 +373,7 @@ export default function ScoreEncoding() {
       <View key={l.id} style={styles.gridRow}>
         <View style={[styles.gridNameCell, { backgroundColor: colors.surface }]}>
           <Text style={styles.gridNameText} numberOfLines={1}>
-            <Text style={{ color: colors.textMuted }}>{l.order}. </Text>
+            <Text style={{ color: GRID_ORDER_TEXT }}>{l.order}. </Text>
             {l.name}
           </Text>
         </View>
@@ -401,7 +407,9 @@ export default function ScoreEncoding() {
                 <Text style={styles.gridHeaderText}>{c.label}</Text>
               </View>
             ))}
-            <View style={[styles.gridGradeCell, { backgroundColor: colors.cream }]}>
+            <View
+              style={[styles.gridGradeCell, { backgroundColor: colors.cream, justifyContent: 'space-around' }]}
+            >
               <Text style={styles.gridHeaderText}>IG</Text>
               <Text style={styles.gridHeaderText}>TG</Text>
               <Text style={styles.gridHeaderText}>LG</Text>
@@ -409,8 +417,8 @@ export default function ScoreEncoding() {
           </View>
 
           {/* HPS row */}
-          <View style={[styles.gridRow, { backgroundColor: '#FFF8E0' }]}>
-            <View style={[styles.gridNameCell, { backgroundColor: '#FFF8E0' }]}>
+          <View style={[styles.gridRow, styles.gridHpsRow]}>
+            <View style={[styles.gridNameCell, styles.gridHpsNameCell]}>
               <Text style={[styles.gridNameText, { color: colors.maroon, fontWeight: '700', fontSize: 10 }]}>
                 HIGHEST POSSIBLE
               </Text>
@@ -757,7 +765,7 @@ export default function ScoreEncoding() {
               return (
                 <View key={row.learner.id}>
                   <View
-                    style={[styles.gradesTableRow, expanded && { backgroundColor: '#FFF8E0' }]}
+                    style={[styles.gradesTableRow, expanded && { backgroundColor: colors.hpsBg }]}
                   >
                     {/* Name → full Student Report (matches PWA onOpenReport) */}
                     <Pressable
@@ -904,16 +912,19 @@ const styles = StyleSheet.create({
   focusName: { fontSize: 18, fontWeight: '700', color: colors.maroon, marginTop: spacing.md },
   scoreFieldRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   scoreFieldLabel: { fontSize: 14, fontWeight: '600', color: colors.text, width: 60 },
+  // PWA focus input: `.score-input` overridden to 64x40, centred, 15px.
   scoreInput: {
-    flex: 1,
+    width: 64,
+    height: 40,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radii.sm,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.sm,
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
     fontSize: 15,
-    textAlign: 'right',
+    textAlign: 'center',
     color: colors.text,
+    backgroundColor: colors.surface,
   },
   focusGradeBar: {
     flexDirection: 'row',
@@ -938,20 +949,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    minHeight: 44,
+    minHeight: 48, // PWA learner rows min-height:48
     backgroundColor: colors.surface,
   },
-  gridHeader: { backgroundColor: colors.cream },
+  gridHeader: { backgroundColor: colors.cream, minHeight: 40 }, // PWA header min-height:40
+  // PWA HPS row: min-height:44 on the `--hps-bg` tint
+  gridHpsRow: { backgroundColor: colors.hpsBg, minHeight: 44 },
   gridNameCell: {
     width: NAME_W,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 10, // PWA padding 8px 10px
+    paddingVertical: 8,
     borderRightWidth: 1,
     borderRightColor: colors.border,
     justifyContent: 'center',
   },
-  gridNameText: { fontSize: 11, color: colors.text, fontWeight: '500' },
-  gridHeaderText: { fontSize: 10, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  // PWA HPS name cell uses 6px 10px padding
+  gridHpsNameCell: { paddingVertical: 6 },
+  gridNameText: { fontSize: 12, color: colors.text, fontWeight: '500' }, // PWA 12px/500
+  gridHeaderText: { fontSize: 11, fontWeight: '700', color: colors.text, textAlign: 'center' },
   gridCell: {
     width: COL_W,
     alignItems: 'center',
@@ -959,39 +974,45 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 2,
   },
+  // PWA `.score-input` (theme.css): 42px wide, 6px 2px padding, 1px border,
+  // 6px radius, 13px centred text on --color-surface.
   gridInput: {
     width: 42,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 4,
+    borderRadius: 6,
     textAlign: 'center',
     paddingVertical: 6,
-    fontSize: 12,
+    paddingHorizontal: 2,
+    fontSize: 13,
     color: colors.text,
     backgroundColor: colors.surface,
   },
-  gridInputHps: { backgroundColor: '#FFFDF0' },
+  // NOTE: the PWA tints the HPS *row* with `--hps-bg` (colors.hpsBg) but
+  // leaves the HPS score cells on `.score-input`'s white surface, so there is
+  // deliberately no HPS-specific input background here.
+  // PWA grade block: min-width 110, gap 6, 0 8px padding, left border.
   gridGradeCell: {
     width: GRADE_W,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    gap: 6,
     borderLeftWidth: 1,
     borderLeftColor: colors.border,
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
   },
-  gridIg: { fontSize: 12, fontWeight: '600', color: colors.maroon, minWidth: 28, textAlign: 'center' },
-  gridTg: { fontSize: 13, fontWeight: '700', color: colors.green, minWidth: 28, textAlign: 'center' },
-  gridLg: { fontSize: 12, fontWeight: '600', color: colors.text, minWidth: 20, textAlign: 'center' },
+  gridIg: { fontSize: 13, fontWeight: '600', color: colors.maroon, minWidth: 36, textAlign: 'center' },
+  gridTg: { fontSize: 14, fontWeight: '700', color: colors.green, minWidth: 28, textAlign: 'center' },
+  gridLg: { fontSize: 13, fontWeight: '600', color: colors.text, minWidth: 18, textAlign: 'center' },
   gridSectionBanner: {
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  gridSectionBannerText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  gridSectionBannerText: { color: '#fff', fontSize: 12, fontWeight: '600' }, // PWA 600
   emptyGridText: {
-    padding: 12,
-    fontSize: 12,
-    color: colors.textMuted,
+    padding: 16, // PWA padding:16
+    fontSize: 13,
+    color: GRID_EMPTY_TEXT,
     textAlign: 'center',
   },
 
@@ -1009,9 +1030,9 @@ const styles = StyleSheet.create({
   highlightToggleLabel: { fontSize: 13, fontWeight: '600', color: colors.text },
   colorRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, gap: 8 },
   colorSwatch: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 18, // PWA swatch 18x18
+    height: 18,
+    borderRadius: 9,
     borderWidth: 2,
     borderColor: 'transparent',
   },
@@ -1057,7 +1078,7 @@ const styles = StyleSheet.create({
   gradeDetail: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: '#FFF8E0',
+    backgroundColor: colors.hpsBg, // PWA expanded grade tint = --hps-bg
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     gap: 3,

@@ -30,15 +30,29 @@ import type { AttendanceStatus, Learner, LearnerNote, Section } from '@/types';
 import { ATTENDANCE_LABELS } from '@/types';
 
 const STATUS_ORDER: AttendanceStatus[] = ['P', 'A', 'L', 'E', 'C'];
-const STATUS_COLORS: Record<AttendanceStatus, { bg: string; fg: string }> = {
-  P: { bg: '#e8f5e9', fg: '#2e7d32' },
-  A: { bg: '#fdecea', fg: '#b71c1c' },
-  L: { bg: '#fff3e0', fg: '#e65100' },
-  E: { bg: '#e3f2fd', fg: '#1565c0' },
-  C: { bg: '#f3e5f5', fg: '#6a1b9a' },
+
+// The PWA writes this whole palette inline in pages/Attendance.tsx:31-37 and
+// none of the six colours has a theme token, so it stays a local const:
+// `bg` tints the learner row / the monthly month cell, `fg` is that cell's
+// text, `border` fills the active status button. (The P/A/L borders happen to
+// equal --color-green / --color-primary / --color-accent but are literal there.)
+const STATUS_COLORS: Record<AttendanceStatus, { bg: string; fg: string; border: string }> = {
+  P: { bg: '#e8f5e9', fg: '#2e7d32', border: '#486C2F' },
+  A: { bg: '#fdecea', fg: '#b71c1c', border: '#8B2626' },
+  L: { bg: '#fff3e0', fg: '#e65100', border: '#EF6905' },
+  E: { bg: '#e3f2fd', fg: '#1565c0', border: '#1976d2' },
+  C: { bg: '#f3e5f5', fg: '#6a1b9a', border: '#7b1fa2' },
 };
 
-const DAY_COL_W = 26;
+// PWA active status button label colour: `color: active ? '#fff' : c.fg`
+// (pages/Attendance.tsx:252). No theme token, so it lives here.
+const STATUS_ACTIVE_TEXT = '#FFFFFF';
+
+// PWA monthly table column widths (pages/Attendance.tsx:643-694): each day
+// column is a fixed 22px, the sticky learner column is minWidth 120, and the
+// tally/rate columns are content-sized (padding 6px 8px) so we give them a
+// rough fixed width to keep the rows aligned.
+const DAY_COL_W = 22;
 const NAME_COL_W = 120;
 const TALLY_COL_W = 72;
 const RATE_COL_W = 40;
@@ -177,13 +191,25 @@ export default function Attendance() {
     const c = status ? STATUS_COLORS[status] : null;
     const noteCount = section ? getNotesForLearner(section.id, l.id).length : 0;
     return (
-      <View key={l.id} style={styles.learnerRow}>
+      // PWA row background: `status ? STATUS_COLORS[status].bg : transparent`
+      // (pages/Attendance.tsx:210).
+      <View key={l.id} style={[styles.learnerRow, c ? { backgroundColor: c.bg } : null]}>
         <Pressable onPress={() => handleCycle(l.id)} style={styles.learnerMain}>
           <Text style={styles.learnerName} numberOfLines={1}>
             {l.order}. {l.name}
           </Text>
-          <View style={[styles.statusChip, c ? { backgroundColor: c.bg } : styles.statusChipEmpty]}>
-            <Text style={[styles.statusChipText, c ? { color: c.fg } : { color: colors.textMuted }]}>
+          {/* PWA renders the set status as the filled/active status button —
+              background+border = STATUS_COLORS[s].border, white label — and an
+              unset learner has no button (pages/Attendance.tsx:246-260). */}
+          <View
+            style={[
+              styles.statusChip,
+              c ? { backgroundColor: c.border, borderColor: c.border } : styles.statusChipEmpty,
+            ]}
+          >
+            <Text
+              style={[styles.statusChipText, { color: c ? STATUS_ACTIVE_TEXT : colors.textMuted }]}
+            >
               {status ?? '—'}
             </Text>
           </View>
@@ -221,10 +247,11 @@ export default function Attendance() {
     return (
       <ScrollView horizontal showsHorizontalScrollIndicator nestedScrollEnabled>
         <View style={{ minWidth: tableWidth }}>
-          {/* Header */}
+          {/* PWA thead (pages/Attendance.tsx:643-695): a 2px bottom rule, a
+              sticky white learner column, 10/600 day numbers, 11px tally/% th. */}
           <View style={[styles.monthRow, styles.monthHeader]}>
             <View style={[styles.monthNameCell, { backgroundColor: colors.surface }]}>
-              <Text style={styles.monthHeaderText}>Learner</Text>
+              <Text style={styles.monthHeaderName}>Learner</Text>
             </View>
             {monthDays.map((d) => (
               <View key={d} style={styles.monthDayCell}>
@@ -232,10 +259,10 @@ export default function Attendance() {
               </View>
             ))}
             <View style={styles.monthTallyCell}>
-              <Text style={styles.monthHeaderText}>P/A/L/E/C</Text>
+              <Text style={styles.monthHeaderCell}>P/A/L/E/C</Text>
             </View>
             <View style={styles.monthRateCell}>
-              <Text style={styles.monthHeaderText}>%</Text>
+              <Text style={styles.monthHeaderCell}>%</Text>
             </View>
           </View>
 
@@ -287,11 +314,17 @@ export default function Attendance() {
 
       {view === 'daily' ? (
         <ScrollView contentContainerStyle={{ padding: spacing.md }}>
-          <View style={styles.dateBar}>
-            <Pressable onPress={() => setDateKey((d) => addDays(d, -1))} style={styles.dateArrow}>
-              <Text style={styles.dateArrowText}>←</Text>
-            </Pressable>
-            <View style={{ flex: 1, alignItems: 'center' }}>
+          {/* Date nav — PWA `.card` (padding 10px 12px) with two compact
+              `.btn btn-outline` arrows and the accent "Jump to Today" link
+              (pages/Attendance.tsx:391-438). */}
+          <Card style={styles.navBar}>
+            <Button
+              variant="outline"
+              size="sm"
+              label="‹"
+              onPress={() => setDateKey((d) => addDays(d, -1))}
+            />
+            <View style={styles.navCenter}>
               <Text style={styles.dateText}>{formatDisplayDate(dateKey)}</Text>
               {dateKey !== toDateKey() && (
                 <Pressable onPress={() => setDateKey(toDateKey())}>
@@ -299,57 +332,49 @@ export default function Attendance() {
                 </Pressable>
               )}
             </View>
-            <Pressable onPress={() => setDateKey((d) => addDays(d, 1))} style={styles.dateArrow}>
-              <Text style={styles.dateArrowText}>→</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.toolbarRow}>
-            <Button label="Mark All Present" onPress={handleMarkAllPresent} style={{ flex: 1 }} />
             <Button
-              label="Copy Yesterday"
-              variant="secondary"
-              onPress={handleCopyYesterday}
-              style={{ flex: 1 }}
+              variant="outline"
+              size="sm"
+              label="›"
+              onPress={() => setDateKey((d) => addDays(d, 1))}
             />
-          </View>
-          <Button
-            label="Clear Day"
-            variant="danger"
-            onPress={handleClearDay}
-            style={{ marginTop: spacing.sm }}
-          />
+          </Card>
 
-          <View style={styles.summaryStrip}>
-            {(['P', 'A', 'L', 'E', 'C'] as AttendanceStatus[]).map((s) => (
-              <View key={s} style={styles.summaryChip}>
-                <Text style={[styles.summaryChipLetter, { color: STATUS_COLORS[s].fg }]}>{s}</Text>
-                <Text style={styles.summaryChipCount}>
-                  {s === 'P'
-                    ? daySummary.present
-                    : s === 'A'
-                      ? daySummary.absent
-                      : s === 'L'
-                        ? daySummary.late
-                        : s === 'E'
-                          ? daySummary.excused
-                          : daySummary.cutting}
-                </Text>
+          {/* Summary strip — PWA `.card` grid `repeat(6, 1fr)` (padding 12px 6px):
+              the big number is the count, tinted by that status; the small
+              caption is the status letter / "Rate" (pages/Attendance.tsx:452-501). */}
+          <Card style={styles.summaryStrip}>
+            {(
+              [
+                ['P', daySummary.present, STATUS_COLORS.P.fg],
+                ['A', daySummary.absent, STATUS_COLORS.A.fg],
+                ['L', daySummary.late, STATUS_COLORS.L.fg],
+                ['E', daySummary.excused, STATUS_COLORS.E.fg],
+                ['C', daySummary.cutting, STATUS_COLORS.C.fg],
+              ] as const
+            ).map(([label, count, fg]) => (
+              <View key={label} style={styles.summaryCell}>
+                <Text style={[styles.summaryValue, { color: fg }]}>{count}</Text>
+                <Text style={styles.summaryCaption}>{label}</Text>
               </View>
             ))}
-            <View style={styles.summaryChip}>
-              <Text style={styles.summaryChipLetter}>Rate</Text>
-              <Text style={styles.summaryChipCount}>
+            <View style={styles.summaryCell}>
+              <Text style={[styles.summaryValue, { color: colors.maroon }]}>
                 {daySummary.rate != null ? `${daySummary.rate}%` : '—'}
               </Text>
+              <Text style={styles.summaryCaption}>Rate</Text>
             </View>
-          </View>
+          </Card>
 
-          <Text style={styles.legendText}>
-            Tap name/status to cycle:{' '}
-            {STATUS_ORDER.map((s) => `${s}=${ATTENDANCE_LABELS[s]}`).join(' → ')} → blank
-            {'\n'}Tap 📝 to add a note for that learner
-          </Text>
+          {/* Bulk actions — PWA compact buttons in a single wrapping row
+              (pages/Attendance.tsx:504-544). The two outline buttons are the
+              compact `.btn btn-outline` (Button size="sm"); "Clear Day" also
+              overrides to var(--color-danger) (Button variant="danger"). */}
+          <View style={styles.actionRow}>
+            <Button size="sm" label="Mark All Present" onPress={handleMarkAllPresent} />
+            <Button size="sm" variant="outline" label="Copy Yesterday" onPress={handleCopyYesterday} />
+            <Button size="sm" variant="danger" label="Clear Day" onPress={handleClearDay} />
+          </View>
 
           <Text style={styles.groupHeading}>♂ Male ({males.length})</Text>
           <Card style={{ padding: 0, marginBottom: spacing.md }}>
@@ -368,34 +393,42 @@ export default function Attendance() {
               females.map(renderLearnerRow)
             )}
           </Card>
+
+          <Text style={styles.legendText}>
+            Tap name/status to cycle:{' '}
+            {STATUS_ORDER.map((s) => `${s}=${ATTENDANCE_LABELS[s]}`).join(' → ')} → blank
+            {'\n'}Tap 📝 to add a note for that learner
+          </Text>
         </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing.md }}>
-          <View style={styles.dateBar}>
-            <Pressable
+          {/* Month nav — same PWA `.card` nav bar as the daily date bar
+              (pages/Attendance.tsx:588-618). */}
+          <Card style={styles.navBar}>
+            <Button
+              variant="outline"
+              size="sm"
+              label="‹"
               onPress={() =>
                 setMonthCursor((c) =>
                   c.month === 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: c.month - 1 }
                 )
               }
-              style={styles.dateArrow}
-            >
-              <Text style={styles.dateArrowText}>←</Text>
-            </Pressable>
-            <Text style={[styles.dateText, { flex: 1, textAlign: 'center' }]}>
+            />
+            <Text style={[styles.dateText, styles.navCenterText]}>
               {monthLabel(monthCursor.year, monthCursor.month)}
             </Text>
-            <Pressable
+            <Button
+              variant="outline"
+              size="sm"
+              label="›"
               onPress={() =>
                 setMonthCursor((c) =>
                   c.month === 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: c.month + 1 }
                 )
               }
-              style={styles.dateArrow}
-            >
-              <Text style={styles.dateArrowText}>→</Text>
-            </Pressable>
-          </View>
+            />
+          </Card>
 
           {roster.length === 0 ? (
             <Card style={{ alignItems: 'center', padding: spacing.lg }}>
@@ -453,41 +486,50 @@ export default function Attendance() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  dateBar: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
-  dateArrow: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+
+  // PWA nav bar (both the daily date nav and the monthly month nav): a `.card`
+  // with padding 10px 12px, a `gap:8` row, marginBottom 12 (Attendance.tsx:391,589).
+  navBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
-  dateArrowText: { fontSize: 18, color: colors.maroon },
+  navCenter: { flex: 1, alignItems: 'center' },
+  navCenterText: { flex: 1, textAlign: 'center' },
   dateText: { fontSize: 15, fontWeight: '700', color: colors.text },
-  todayLink: { fontSize: 12, color: colors.maroon, marginTop: 2 },
-  toolbarRow: { flexDirection: 'row', gap: 8 },
-  summaryStrip: { flexDirection: 'row', gap: 8, marginTop: spacing.md, flexWrap: 'wrap' },
-  summaryChip: {
-    flex: 1,
-    minWidth: 50,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
-    padding: 6,
-    alignItems: 'center',
+  // PWA "Jump to Today": fontSize 12 / 600, colour var(--color-accent).
+  todayLink: { fontSize: 12, fontWeight: '600', color: colors.orange, marginTop: 2 },
+
+  // PWA summary strip: a `.card` laid out as 6 equal columns, `gap:4`,
+  // `padding:12px 6px`, marginBottom 14 (pages/Attendance.tsx:452-461).
+  summaryStrip: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
   },
-  summaryChipLetter: { fontSize: 11, fontWeight: '700', color: colors.textMuted },
-  summaryChipCount: { fontSize: 14, fontWeight: '700', color: colors.text },
-  legendText: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  groupHeading: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
+  summaryCell: { flex: 1, alignItems: 'center' },
+  // The count: fontSize 17 / 800. The caption: fontSize 10, colour text-muted.
+  summaryValue: { fontSize: 17, fontWeight: '800' },
+  summaryCaption: { fontSize: 10, color: colors.textMuted },
+
+  // PWA bulk-actions row: `gap:8; marginBottom:16; flexWrap:wrap` (Attendance.tsx:504-510).
+  actionRow: { flexDirection: 'row', gap: 8, marginBottom: spacing.md, flexWrap: 'wrap' },
+
+  // PWA legend text: fontSize 12, colour text-muted, marginTop 8 (Attendance.tsx:566-574).
+  legendText: { fontSize: 12, color: colors.textMuted, marginTop: spacing.sm },
+
+  // PWA group heading is `<h3 style={{ fontSize:13, color:var(--color-primary),
+  //   marginBottom:6, fontWeight:700 }}>` (pages/Attendance.tsx:272-279).
+  groupHeading: { fontSize: 13, fontWeight: '700', color: colors.maroon, marginBottom: 6 },
   emptyText: { fontSize: 13, color: colors.textMuted, padding: spacing.sm },
+
+  // PWA learner row: `alignItems:center; gap:8; padding:10px 12px; borderBottom
+  // 1px solid var(--color-border)` (pages/Attendance.tsx:202-211).
   learnerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -503,16 +545,21 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
     paddingRight: 6,
   },
-  learnerName: { fontSize: 13, color: colors.text, flex: 1, marginRight: 8 },
+  // PWA name: fontSize 14 / 500, single-line ellipsis (pages/Attendance.tsx:223-234).
+  learnerName: { fontSize: 14, fontWeight: '500', color: colors.text, flex: 1, marginRight: 8 },
+  // PWA status button: width/height 34, radius 8, font 13 / 700
+  // (pages/Attendance.tsx:246-256).
   statusChip: {
-    width: 36,
-    height: 30,
+    width: 34,
+    height: 34,
     borderRadius: radii.sm,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // No status set → PWA unselected button look (surface bg, 1px border).
   statusChipEmpty: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -553,35 +600,42 @@ const styles = StyleSheet.create({
   },
   noteRecentDate: { fontSize: 10, color: colors.textMuted, marginTop: 2 },
 
-
-  // Monthly grid
+  // Monthly grid — PWA table (pages/Attendance.tsx:636-748)
   monthRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    minHeight: 32,
+    minHeight: 30,
   },
-  monthHeader: { backgroundColor: colors.cream },
+  // PWA gives the header ths a 2px bottom rule on the plain white surface.
+  monthHeader: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 2,
+    borderBottomColor: colors.border,
+  },
   monthNameCell: {
     width: NAME_COL_W,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
     justifyContent: 'center',
   },
-  monthNameText: { fontSize: 11, fontWeight: '500', color: colors.text },
-  monthHeaderText: { fontSize: 10, fontWeight: '700', color: colors.text },
+  // PWA name cell inherits the table's 12px, weight 500 (Attendance.tsx:702-718).
+  monthNameText: { fontSize: 12, fontWeight: '500', color: colors.text },
+  // "Learner" th inherits the table's 12px and default bold weight.
+  monthHeaderName: { fontSize: 12, fontWeight: '700', color: colors.text },
+  // tally / % th: fontSize 11 (pages/Attendance.tsx:676-694).
+  monthHeaderCell: { fontSize: 11, color: colors.text },
   monthHeaderDay: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '600',
     color: colors.textMuted,
     textAlign: 'center',
   },
+  // PWA day cell: width/minWidth 22, height 28 (pages/Attendance.tsx:290-325).
   monthDayCell: {
     width: DAY_COL_W,
-    height: 30,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -589,22 +643,24 @@ const styles = StyleSheet.create({
   monthDayLetter: { fontSize: 11, fontWeight: '700' },
   monthTallyCell: {
     width: TALLY_COL_W,
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  monthTallyText: { fontSize: 10, color: colors.textMuted },
+  monthTallyText: { fontSize: 11, color: colors.textMuted },
   monthRateCell: {
     width: RATE_COL_W,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  monthRateText: { fontSize: 11, fontWeight: '700', color: colors.maroon },
+  monthRateText: { fontSize: 12, fontWeight: '700', color: colors.maroon },
+  // PWA monthly legend: marginTop 12, fontSize 12, gap 10 (pages/Attendance.tsx:752-760).
   monthLegend: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginTop: spacing.md,
+    marginTop: 12,
   },
   monthLegendItem: { fontSize: 12, color: colors.textMuted },
 });

@@ -4,7 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Header } from '@/components/Header';
 import { DuplicateBanner } from '@/components/DuplicateBanner';
 import { Button, Card, Modal, ModalTitle, Field, SegmentedControl, OptionList } from '@/components/ui';
-import { colors, radii, spacing } from '@/theme/theme';
+import { colors, spacing, tints } from '@/theme/theme';
 import { getSectionById, putSection } from '@/db/repositories/sections';
 import { uuid } from '@/utils/id';
 import type { Section, Subject, SubjectType } from '@/types';
@@ -88,35 +88,38 @@ export default function SectionDetail() {
 
       <ScrollView contentContainerStyle={{ padding: spacing.md }}>
         <View style={styles.actionRow}>
-          <Pressable style={styles.actionBtn} onPress={() => router.push(`/section/${section.id}/learners`)}>
-            <Text style={styles.actionBtnText}>👥 Learners ({section.learners.length})</Text>
-          </Pressable>
-          <Pressable
-            style={styles.actionBtn}
+          {/* PWA renders these as `.btn btn-outline` (2px maroon border, 12px 20px
+              padding, 15/600) — the shared Button reproduces that `.btn`. */}
+          <Button
+            variant="outline"
+            label={`👥 Learners (${section.learners.length})`}
+            onPress={() => router.push(`/section/${section.id}/learners`)}
+          />
+          <Button
+            variant="outline"
+            label="📋 Attendance"
             onPress={() => router.push(`/section/${section.id}/attendance`)}
-          >
-            <Text style={styles.actionBtnText}>📋 Attendance</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.actionBtn, section.learners.length === 0 && styles.actionBtnDisabled]}
+          />
+          <Button
+            variant="outline"
+            label="🎓 Student Reports"
             disabled={section.learners.length === 0}
             onPress={() => router.push(`/section/${section.id}/learners`)}
-          >
-            <Text style={styles.actionBtnText}>🎓 Student Reports</Text>
-          </Pressable>
-          <Button label="+ Add Subject" onPress={() => setShowAddSubject(true)} />
+          />
+          {/* PWA's "+ Add Subject" is `.btn btn-accent` (orange), not the default maroon. */}
+          <Button variant="accent" label="+ Add Subject" onPress={() => setShowAddSubject(true)} />
         </View>
 
         <Text style={styles.sectionHeading}>Subjects</Text>
 
         {section.subjects.length === 0 ? (
-          <Card style={{ alignItems: 'center', padding: spacing.lg }}>
-            <Text style={{ color: colors.textMuted, textAlign: 'center' }}>
+          <Card>
+            <Text style={styles.emptyText}>
               No subjects yet. Add General Mathematics or any subject you teach.
             </Text>
           </Card>
         ) : (
-          <View style={{ gap: spacing.sm }}>
+          <View style={styles.subjectList}>
             {section.subjects.map((subj) => (
               <Pressable
                 key={subj.id}
@@ -124,33 +127,43 @@ export default function SectionDetail() {
               >
                 <Card>
                   <View style={styles.subjectRow}>
-                    <View style={{ flex: 1 }}>
+                    <View style={styles.subjectLeft}>
                       <Text style={styles.subjectName}>{subj.name}</Text>
+                      {/* PWA badge classes: `.badge-core` = color-mix(primary 15%) bg +
+                          primary text; `.badge-elective` = color-mix(accent 15%) bg +
+                          accent text (see theme.css). The RN tints table ports those. */}
                       <View
                         style={[
                           styles.badge,
-                          { backgroundColor: subj.subjectType.includes('Core') ? '#E9F0E3' : '#FBEFE9' },
+                          {
+                            backgroundColor: subj.subjectType.includes('Core')
+                              ? tints.primary15
+                              : tints.accent15,
+                          },
                         ]}
                       >
                         <Text
                           style={[
                             styles.badgeText,
-                            { color: subj.subjectType.includes('Core') ? colors.green : colors.orange },
+                            { color: subj.subjectType.includes('Core') ? colors.maroon : colors.orange },
                           ]}
                         >
                           {subj.subjectType.includes('Core') ? 'Core Subject' : 'Elective'}
                         </Text>
                       </View>
                     </View>
-                    <Pressable
-                      style={styles.renameBtn}
-                      onPress={() => {
-                        setRenamingSubject(subj);
-                        setRenameValue(subj.name);
-                      }}
-                    >
-                      <Text style={styles.renameBtnText}>Rename</Text>
-                    </Pressable>
+                    <View style={styles.subjectRight}>
+                      <Pressable
+                        style={styles.renameBtn}
+                        onPress={() => {
+                          setRenamingSubject(subj);
+                          setRenameValue(subj.name);
+                        }}
+                      >
+                        <Text style={styles.renameBtnText}>Rename</Text>
+                      </Pressable>
+                      <Text style={styles.chevron}>›</Text>
+                    </View>
                   </View>
                 </Card>
               </Pressable>
@@ -177,18 +190,20 @@ export default function SectionDetail() {
           value={editGrade}
           onChange={setEditGrade}
         />
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: spacing.lg }}>
+        {/* PWA's Grade Level block carries marginBottom:20 before the action row. */}
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
           <Button label="Cancel" variant="secondary" onPress={() => setShowEditSection(false)} style={{ flex: 1 }} />
           <Button label="Save" onPress={handleSaveSection} style={{ flex: 1 }} />
         </View>
       </Modal>
 
-      <Modal visible={showAddSubject} onClose={() => setShowAddSubject(false)}>
+      <Modal visible={showAddSubject} onClose={() => setShowAddSubject(false)} maxWidth={380}>
         <ModalTitle>Add Subject</ModalTitle>
         <Field label="Subject Name" value={subjName} onChangeText={setSubjName} />
         <Text style={styles.fieldLabelSpaced}>Subject Type</Text>
         <OptionList options={SUBJECT_TYPES} value={subjType} onChange={setSubjType} />
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: spacing.lg }}>
+        {/* PWA's Subject Type block carries marginBottom:20 before the action row. */}
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
           <Button label="Cancel" variant="secondary" onPress={() => setShowAddSubject(false)} style={{ flex: 1 }} />
           <Button label="Save" onPress={handleAddSubject} style={{ flex: 1 }} />
         </View>
@@ -208,40 +223,48 @@ export default function SectionDetail() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: spacing.lg },
-  actionBtn: {
-    borderWidth: 1.5,
-    borderColor: colors.maroon,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: radii.md,
-  },
-  actionBtnDisabled: { opacity: 0.5 },
-  actionBtnText: { color: colors.maroon, fontWeight: '600', fontSize: 13 },
+  // PWA actions row: `display:flex; gap:10; marginBottom:20; flexWrap:wrap`.
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  // PWA `<h2 style={{ fontSize:14, color:var(--color-text-muted), marginBottom:10,
+  //   textTransform:'uppercase', letterSpacing:0.5 }}>` — an <h2> is 700 by default.
   sectionHeading: {
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textMuted,
-    marginBottom: spacing.sm,
+    marginBottom: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  subjectRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  subjectName: { fontWeight: '700', color: colors.maroon, fontSize: 15 },
+  // PWA empty state is a `.card` whose text is `textAlign:center; color:text-muted`.
+  emptyText: { color: colors.textMuted, textAlign: 'center' },
+  // PWA subjects list: `display:flex; flexDirection:column; gap:10`.
+  subjectList: { gap: 10 },
+  // PWA subject card inner row: `justify-content:space-between; align-items:center`.
+  subjectRow: { flexDirection: 'row', alignItems: 'center' },
+  subjectLeft: { flex: 1 },
+  // PWA name: `fontWeight:700; color:var(--color-primary)` — inherits body's 16px.
+  subjectName: { fontWeight: '700', color: colors.maroon, fontSize: 16 },
+  // PWA `.badge`: padding 4px 10px; radius 999px; font 12/600.
   badge: {
     marginTop: 6,
     alignSelf: 'flex-start',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
     borderRadius: 999,
   },
-  badgeText: { fontSize: 11, fontWeight: '700' },
+  badgeText: { fontSize: 12, fontWeight: '600' },
+  // PWA subject card right cluster: `display:flex; gap:8; align-items:center`.
+  subjectRight: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  // PWA rename `<button>`: bg cream, color primary, padding 6px 8px; radius 6; font 11.
   renameBtn: {
     backgroundColor: colors.cream,
     paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: radii.sm,
+    paddingHorizontal: 8,
+    borderRadius: 6,
   },
-  renameBtnText: { color: colors.maroon, fontSize: 12, fontWeight: '600' },
+  renameBtnText: { color: colors.maroon, fontSize: 11 },
+  // PWA trailing chevron `<span style={{ color:var(--color-accent), fontSize:22 }}>›</span>`.
+  chevron: { color: colors.orange, fontSize: 22 },
+  // PWA "Grade Level"/"Subject Type" labels: fontSize 13; fontWeight 600.
   fieldLabelSpaced: { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 6 },
 });

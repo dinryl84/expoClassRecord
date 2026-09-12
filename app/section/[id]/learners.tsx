@@ -10,7 +10,6 @@ import { parseBulkNames, splitByGender } from '@/utils/bulkUpload';
 import { reconcileLearners } from '@/utils/learnerMatch';
 import { uuid } from '@/utils/id';
 import type { Learner, Section } from '@/types';
-
 export default function Learners() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [section, setSection] = useState<Section | null>(null);
@@ -93,14 +92,15 @@ export default function Learners() {
           key={l.id}
           style={[
             styles.learnerRow,
-            idx < list.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+            idx < list.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.divider },
           ]}
         >
           <Text style={styles.learnerName}>
             <Text style={{ color: colors.textMuted }}>{l.order}. </Text>
             {l.name}
           </Text>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
+          {/* PWA row action cluster: `display:flex; gap:6`. */}
+          <View style={{ flexDirection: 'row', gap: 6 }}>
             <Pressable onPress={() => openReport(l.id)}>
               <Text style={styles.linkBlue}>📊 Report</Text>
             </Pressable>
@@ -119,12 +119,26 @@ export default function Learners() {
       <DuplicateBanner section={section} />
 
       <ScrollView contentContainerStyle={{ padding: spacing.md }}>
-        <Button label="📋 Bulk Upload Names" onPress={() => setShowBulk(true)} style={{ marginBottom: spacing.md, alignSelf: 'flex-start' }} />
+        {/* PWA renders this as `.btn btn-accent` (orange), not the default maroon. */}
+        <Button
+          variant="accent"
+          label="📋 Bulk Upload Names"
+          onPress={() => setShowBulk(true)}
+          style={{ marginBottom: spacing.md, alignSelf: 'flex-start' }}
+        />
 
-        <Card style={{ marginBottom: spacing.lg }}>
+        {/* PWA Quick Add `.card` carries marginBottom:20. */}
+        <Card style={{ marginBottom: 20 }}>
           <Text style={styles.quickAddTitle}>Quick Add</Text>
-          <Field label="Name" value={manualName} onChangeText={setManualName} placeholder="LAST, FIRST M." />
-          <Text style={styles.fieldLabelSpaced}>Gender</Text>
+          {/* PWA quick add has no labels on its name input or gender select. */}
+          {/* The PWA labels neither of these; keep an accessibility name since
+              the visible label is gone. */}
+          <Field
+            value={manualName}
+            onChangeText={setManualName}
+            placeholder="LAST, FIRST M."
+            accessibilityLabel="Learner name"
+          />
           <SegmentedControl
             options={[
               { label: 'Male', value: 'Male' as const },
@@ -155,8 +169,11 @@ export default function Learners() {
         </View>
       </ScrollView>
 
-      <Modal visible={showBulk} onClose={() => setShowBulk(false)} maxWidth={480}>
-        <ModalTitle>Bulk Upload Names</ModalTitle>
+      {/* PWA "Bulk Upload Names" is a bottom sheet (rgba(0,0,0,0.45) backdrop,
+          flex-end, 16px top radius, maxWidth 480) — the shared Modal's `sheet`. */}
+      <Modal visible={showBulk} onClose={() => setShowBulk(false)} maxWidth={480} variant="sheet">
+        {/* PWA bulk-upload `<h2>` carries marginBottom:8. */}
+        <ModalTitle style={{ marginBottom: 8 }}>Bulk Upload Names</ModalTitle>
         <Text style={styles.bulkHelp}>
           Paste names from SF1 or Excel (one name per line). Format: LAST, FIRST M.
         </Text>
@@ -171,12 +188,12 @@ export default function Learners() {
         />
         <View style={{ marginTop: spacing.sm }}>
           <Field
-            label="Names"
             value={bulkText}
             onChangeText={setBulkText}
             placeholder={'BANTANG, PAUL JAKE T.\nDADONG, JESTONY M.\n...'}
+            accessibilityLabel="Names to upload"
             multiline
-            numberOfLines={8}
+            numberOfLines={10}
           />
         </View>
         <View style={{ flexDirection: 'row', gap: 10, marginTop: spacing.sm }}>
@@ -194,9 +211,12 @@ export default function Learners() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  quickAddTitle: { fontWeight: '600', marginBottom: spacing.sm, fontSize: 14, color: colors.text },
+  // PWA "Quick Add" title: fontSize 14 / 600, marginBottom 10.
+  quickAddTitle: { fontWeight: '600', marginBottom: 10, fontSize: 14, color: colors.text },
   fieldLabelSpaced: { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 6 },
-  groupHeading: { fontSize: 15, fontWeight: '700', marginBottom: spacing.sm },
+  // The PWA group heading is a bare <h3> with no inline size, so it renders at
+  // the browser default 1.17em of the 16px body = ~18.7px, weight 700.
+  groupHeading: { fontSize: 18.7, fontWeight: '700', marginBottom: spacing.sm },
   emptyText: { fontSize: 13, color: colors.textMuted },
   learnerRow: {
     flexDirection: 'row',
@@ -205,8 +225,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
-  learnerName: { fontSize: 14, color: colors.text, flexShrink: 1 },
-  linkBlue: { color: '#2b4a8b', fontSize: 13 },
+  // The PWA row text sets no font-size, inheriting the body's 16px.
+  learnerName: { fontSize: 16, color: colors.text, flexShrink: 1 },
+  linkBlue: { color: colors.info, fontSize: 13 },
   linkRed: { color: colors.maroon, fontSize: 13 },
-  bulkHelp: { fontSize: 13, color: colors.textMuted, marginBottom: spacing.sm },
+  // PWA help paragraph: fontSize 13, marginBottom 14.
+  bulkHelp: { fontSize: 13, color: colors.textMuted, marginBottom: 14 },
 });

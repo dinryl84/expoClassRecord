@@ -147,6 +147,16 @@ export default function StudentReport() {
     return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
   }, [subjectRows]);
 
+  // Presentational only: the PWA's summary row shows a per-term GENERAL
+  // AVERAGE as well as the overall one (StudentGradeReport.tsx:803-828).
+  // Derived from the grades already calculated above — no grading maths change.
+  const perTermAvg = (i: number) => {
+    const vals = subjectRows
+      .map((r) => r.grades[i]?.transmuted)
+      .filter((v): v is number => v != null);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  };
+
   const attPeriod: AttendancePeriodFilter = useMemo(() => {
     if (attMonth) return { mode: 'month', year: attMonth.year, month: attMonth.month };
     if (attMode === 'all') return { mode: 'all' };
@@ -246,13 +256,14 @@ export default function StudentReport() {
         </View>
 
         {/* Written Works — with PS + Weighted Score */}
-        <Text style={styles.compHeading}>
-          Written Works
+        {/* PWA ComponentBlock heading: title left, "Weight N%" right
+            (StudentGradeReport.tsx:283-286) */}
+        <View style={styles.compHeadingRow}>
+          <Text style={styles.compHeadingTitle}>Written Works</Text>
           <Text style={styles.weightHint}>
-            {' '}
-            · Weight {Math.round(weights.written * 100)}%
+            Weight {Math.round(weights.written * 100)}%
           </Text>
-        </Text>
+        </View>
         <View style={styles.compTable}>
           <View style={styles.compHeaderRow}>
             {wwLabels.map((lab, i) => (
@@ -287,13 +298,12 @@ export default function StudentReport() {
         </Text>
 
         {/* Performance Tasks */}
-        <Text style={styles.compHeading}>
-          Performance Tasks
+        <View style={styles.compHeadingRow}>
+          <Text style={styles.compHeadingTitle}>Performance Tasks</Text>
           <Text style={styles.weightHint}>
-            {' '}
-            · Weight {Math.round(weights.performance * 100)}%
+            Weight {Math.round(weights.performance * 100)}%
           </Text>
-        </Text>
+        </View>
         <View style={styles.compTable}>
           <View style={styles.compHeaderRow}>
             {ptLabels.map((lab, i) => (
@@ -328,13 +338,12 @@ export default function StudentReport() {
         </Text>
 
         {/* Quarterly Assessment */}
-        <Text style={styles.compHeading}>
-          Quarterly Assessment
+        <View style={styles.compHeadingRow}>
+          <Text style={styles.compHeadingTitle}>Quarterly Assessment</Text>
           <Text style={styles.weightHint}>
-            {' '}
-            · Weight {Math.round(weights.quarterly * 100)}%
+            Weight {Math.round(weights.quarterly * 100)}%
           </Text>
-        </Text>
+        </View>
         <View style={styles.compTable}>
           <View style={styles.compHeaderRow}>
             <Text style={styles.compHeaderCell}>SA1</Text>
@@ -376,7 +385,7 @@ export default function StudentReport() {
           <Text style={styles.arrow}>→</Text>
           <View>
             <Text style={styles.initialLabel}>Transmuted</Text>
-            <Text style={[styles.initialValue, { color: colors.maroon }]}>
+            <Text style={styles.transmutedValue}>
               {g.transmuted ?? '—'}
             </Text>
           </View>
@@ -572,78 +581,107 @@ export default function StudentReport() {
           )}
         </Card>
 
-        <View style={styles.subjectTableHeader}>
-          <Text style={[styles.subjectTableHeaderText, { flex: 1 }]}>SUBJECT</Text>
-          <Text style={[styles.subjectTableHeaderText, styles.termCol]}>T1</Text>
-          <Text style={[styles.subjectTableHeaderText, styles.termCol]}>T2</Text>
-          <Text style={[styles.subjectTableHeaderText, styles.termCol]}>T3</Text>
-        </View>
+        {/* Grades grid — mirrors the PWA's printable table, incl. the GEN. AVG
+            column and the GENERAL AVERAGE summary row
+            (StudentGradeReport.tsx:714-829) */}
+        <Card style={styles.gridCard}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.gridInner}>
+              <View style={styles.subjectTableHeader}>
+                <Text style={[styles.subjectTableHeaderText, styles.subjectCol]}>
+                  SUBJECT
+                </Text>
+                <Text style={[styles.subjectTableHeaderText, styles.termCol]}>T1</Text>
+                <Text style={[styles.subjectTableHeaderText, styles.termCol]}>T2</Text>
+                <Text style={[styles.subjectTableHeaderText, styles.termCol]}>T3</Text>
+                <Text style={[styles.subjectTableHeaderText, styles.avgCol]}>
+                  GEN. AVG
+                </Text>
+              </View>
 
-        {subjectRows.map(({ subject, grades, rawByTerm }) => (
-          <View key={subject.id}>
-            <View style={styles.subjectTableRow}>
-              <Text style={[styles.subjectName, { flex: 1 }]} numberOfLines={2}>
-                {subject.name}
-              </Text>
-              {[0, 1, 2].map((i) => {
-                const g = grades[i];
-                const key = `${subject.id}-t${i + 1}`;
-                const meta = g?.letter ? GRADE_META[g.letter] : null;
-                const isOpen = expandedKey === key;
-                return (
-                  <Pressable
-                    key={key}
-                    onPress={() => setExpandedKey(isOpen ? null : key)}
-                    style={styles.termCol}
-                  >
-                    {g?.transmuted != null ? (
-                      <View
-                        style={[
-                          styles.termBadge,
-                          meta && { backgroundColor: meta.bg },
-                          isOpen && { borderWidth: 2, borderColor: colors.maroon },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.termBadgeText,
-                            meta && { color: meta.color },
-                          ]}
+              {subjectRows.map(({ subject, grades, average, rawByTerm }) => (
+                <View key={subject.id}>
+                  <View style={styles.subjectTableRow}>
+                    <Text
+                      style={[styles.subjectName, styles.subjectCol]}
+                      numberOfLines={2}
+                    >
+                      {subject.name}
+                    </Text>
+                    {[0, 1, 2].map((i) => {
+                      const g = grades[i];
+                      const key = `${subject.id}-t${i + 1}`;
+                      const meta = g?.letter ? GRADE_META[g.letter] : null;
+                      const isOpen = expandedKey === key;
+                      return (
+                        <Pressable
+                          key={key}
+                          onPress={() => setExpandedKey(isOpen ? null : key)}
+                          style={[styles.termCol, styles.termCell]}
                         >
-                          {g.transmuted}
-                        </Text>
+                          {g?.transmuted != null ? (
+                            <View
+                              style={[
+                                styles.termBadge,
+                                meta && { backgroundColor: meta.bg },
+                                isOpen && { borderWidth: 2, borderColor: colors.maroon },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.termBadgeText,
+                                  meta && { color: meta.color },
+                                ]}
+                              >
+                                {g.transmuted}
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text style={styles.termDash}>—</Text>
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                    <Text style={styles.avgValue}>
+                      {average != null ? average.toFixed(1) : '—'}
+                    </Text>
+                  </View>
+
+                  {[0, 1, 2].map((i) => {
+                    const key = `${subject.id}-t${i + 1}`;
+                    if (expandedKey !== key) return null;
+                    const bundle = rawByTerm[i];
+                    return (
+                      <View key={`exp-${key}`}>
+                        {renderBreakdown(
+                          subject,
+                          (i + 1) as Term,
+                          grades[i],
+                          bundle?.raw ?? null,
+                          bundle?.hps ?? null
+                        )}
                       </View>
-                    ) : (
-                      <Text style={styles.termDash}>—</Text>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            {[0, 1, 2].map((i) => {
-              const key = `${subject.id}-t${i + 1}`;
-              if (expandedKey !== key) return null;
-              const bundle = rawByTerm[i];
-              return (
-                <View key={`exp-${key}`}>
-                  {renderBreakdown(
-                    subject,
-                    (i + 1) as Term,
-                    grades[i],
-                    bundle?.raw ?? null,
-                    bundle?.hps ?? null
-                  )}
+                    );
+                  })}
                 </View>
-              );
-            })}
-          </View>
-        ))}
+              ))}
 
-        <View style={styles.gaRow}>
-          <Text style={styles.gaLabel}>GENERAL AVERAGE</Text>
-          <Text style={styles.gaValue}>{generalAverage ?? '—'}</Text>
-        </View>
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, styles.subjectCol]}>
+                  GENERAL AVERAGE
+                </Text>
+                {[0, 1, 2].map((i) => (
+                  <Text key={i} style={[styles.summaryTerm, styles.termCol]}>
+                    {perTermAvg(i) != null ? perTermAvg(i)!.toFixed(1) : '—'}
+                  </Text>
+                ))}
+                <Text style={styles.summaryAvg}>
+                  {generalAverage != null ? generalAverage.toFixed(1) : '—'}
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+        </Card>
 
         <Text style={styles.hint}>
           Tap any grade to see its full Written Works / Performance Tasks / Quarterly
@@ -756,47 +794,95 @@ const styles = StyleSheet.create({
   attStatText: { fontSize: 13, color: colors.textMuted },
   attStatNum: { fontWeight: '700', color: colors.text },
 
+  // Grades grid card: the PWA wraps the table in `.card` with padding:0 +
+  // overflow hidden (StudentGradeReport.tsx:720); Card supplies surface/border.
+  gridCard: { padding: 0, overflow: 'hidden' },
+  // PWA inner wrapper minWidth:438 (StudentGradeReport.tsx:722)
+  gridInner: { minWidth: 438 },
   subjectTableHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.cream,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderTopLeftRadius: radii.md,
-    borderTopRightRadius: radii.md,
+    backgroundColor: colors.cream, // PWA header row tint (StudentGradeReport.tsx:726)
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   subjectTableHeaderText: {
     fontSize: 11,
     fontWeight: '700',
     color: colors.text,
     textAlign: 'center',
+    paddingVertical: 8,
   },
+  // PWA column widths: SUBJECT 150 / term 66 / GEN.AVG 90
+  // (StudentGradeReport.tsx:732-736)
+  subjectCol: { width: 150, flexShrink: 0, paddingHorizontal: 10, textAlign: 'left' },
+  termCol: { width: 66, flexShrink: 0, textAlign: 'center' },
+  avgCol: { width: 90, flexShrink: 0, textAlign: 'center' },
   subjectTableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    minHeight: 48, // PWA row minHeight:48 (StudentGradeReport.tsx:744)
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
   },
-  subjectName: { fontSize: 13, fontWeight: '600', color: colors.text },
-  termCol: { width: 52, alignItems: 'center' },
+  subjectName: {
+    fontSize: 12, // PWA subject cell 12/600, single line (StudentGradeReport.tsx:749-755)
+    fontWeight: '600',
+    color: colors.text,
+    paddingVertical: 6,
+  },
+  termCell: { alignItems: 'center' },
+  // PWA term cell centres the letter badge in its 66px column
   termBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    minWidth: 40,
+    minWidth: 30, // PWA badge minWidth:30, padding 3x8, radius 8 (StudentGradeReport.tsx:220-230)
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: radii.sm,
     alignItems: 'center',
   },
   termBadgeText: { fontSize: 13, fontWeight: '700' },
   termDash: { fontSize: 14, color: colors.textMuted },
+  avgValue: {
+    width: 90, // PWA GEN.AVG cell width:90, 13/700 (StudentGradeReport.tsx:783-785)
+    flexShrink: 0,
+    textAlign: 'center',
+    fontWeight: '700',
+    fontSize: 13,
+    color: colors.text,
+  },
+
+  // PWA "GENERAL AVERAGE" summary row: --hps-bg fill, minHeight 46
+  // (StudentGradeReport.tsx:803-828)
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 46,
+    backgroundColor: colors.hpsBg,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.maroon,
+    paddingVertical: 6,
+  },
+  summaryTerm: { fontSize: 12, fontWeight: '700', color: colors.text },
+  summaryAvg: {
+    width: 90,
+    flexShrink: 0,
+    textAlign: 'center',
+    fontSize: 15,
+    color: colors.maroon,
+  },
 
   breakdownBox: {
-    backgroundColor: '#FFFDF0',
+    // PWA expanded panel uses --hps-bg (#fff8e0) (StudentGradeReport.tsx:789-794)
+    backgroundColor: colors.hpsBg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    padding: spacing.md,
+    paddingTop: 12,
+    paddingHorizontal: 14,
+    paddingBottom: 16,
   },
   breakdownTitleRow: {
     flexDirection: 'row',
@@ -806,27 +892,27 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
   },
-  breakdownTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
+  breakdownTitle: { fontSize: 13, fontWeight: '700', color: colors.text }, // PWA 13/700 (StudentGradeReport.tsx:362)
   letterPill: {
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 999,
+    // PWA letter pill: padding 2x8, radius 6 (StudentGradeReport.tsx:366-374)
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 6,
   },
   letterPillText: { fontSize: 11, fontWeight: '700' },
-  compHeading: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.maroon,
+  // PWA ComponentBlock heading row: title left, "Weight N%" right
+  // (StudentGradeReport.tsx:283-286)
+  compHeadingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
     marginTop: spacing.sm,
     marginBottom: 4,
   },
-  compTable: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
-    overflow: 'hidden',
-    marginBottom: 4,
-  },
+  compHeadingTitle: { fontSize: 13, fontWeight: '700', color: colors.maroon },
+  // PWA ComponentBlock table has no outer border — each header/value cell draws
+  // its own bottom border (StudentGradeReport.tsx:248-260, 306-318)
+  compTable: { marginBottom: 4 },
   compHeaderRow: {
     flexDirection: 'row',
     backgroundColor: colors.cream,
@@ -838,12 +924,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   compValueRow: { flexDirection: 'row', backgroundColor: colors.surface },
   compValueCell: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   scoreCellText: { fontSize: 13, color: colors.text },
   weightHint: { fontSize: 11, fontWeight: '500', color: colors.textMuted },
@@ -855,33 +945,27 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   wsValue: { fontWeight: '700', color: colors.text },
+  // PWA Initial→Transmuted block: cream fill, radius 10, padding 10x12,
+  // justify space-between, gap 8 (StudentGradeReport.tsx:416-427)
   initialGradeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    marginTop: spacing.md,
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
     backgroundColor: colors.cream,
-    borderRadius: radii.md,
-    padding: spacing.md,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
-  initialLabel: { fontSize: 11, color: colors.textMuted, fontWeight: '600' },
-  initialValue: { fontSize: 20, fontWeight: '700', color: colors.text },
+  initialLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+  // PWA Initial Grade value is 16/700; the Transmuted value 20/800 in primary
+  // (StudentGradeReport.tsx:429-452)
+  initialValue: { fontSize: 16, fontWeight: '700', color: colors.text },
+  transmutedValue: { fontSize: 20, fontWeight: '800', color: colors.maroon },
   arrow: { fontSize: 18, color: colors.textMuted },
 
-  gaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.md,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  gaLabel: { fontSize: 13, fontWeight: '700', color: colors.maroon },
-  gaValue: { fontSize: 22, fontWeight: '700', color: colors.text },
   hint: {
     fontSize: 12,
     color: colors.textMuted,

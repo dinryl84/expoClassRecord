@@ -4,7 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Card, Modal, ModalTitle, Field, SegmentedControl } from '@/components/ui';
-import { colors, radii, spacing } from '@/theme/theme';
+import { colors, radii, spacing, tints } from '@/theme/theme';
 import { getAllSections, putSection, deleteSection } from '@/db/repositories/sections';
 import { duplicateSection } from '@/db/duplicate';
 import { uuid } from '@/utils/id';
@@ -18,6 +18,14 @@ import {
 } from '@/db/backup';
 
 const BACKUP_REMINDER_DAYS = 7;
+
+// The PWA writes these two translucent-maroon values inline on the Dashboard's
+// backup reminder card; no theme tint expresses a 6% / 30% maroon mix.
+const REMINDER_BG = 'rgba(139, 38, 38, 0.06)'; // PWA pages/Dashboard.tsx:200
+const REMINDER_BORDER = 'rgba(139, 38, 38, 0.3)'; // PWA pages/Dashboard.tsx:201
+
+// The PWA's per-section "⧉ Duplicate" chip uses a blue that appears nowhere else
+// in the app (pages/Dashboard.tsx:415-417) — no token, so it stays local.
 
 export default function Dashboard() {
   const insets = useSafeAreaInsets();
@@ -107,12 +115,10 @@ export default function Dashboard() {
 
   return (
     <View style={styles.screen}>
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+      {/* PWA `.header`: maroon bar, title on the left, action pills on the right. */}
+      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <Text style={styles.headerTitle}>My Sections</Text>
         <View style={styles.headerActions}>
-          <Pressable style={styles.headerBtn} onPress={() => router.push('/import-excel')}>
-            <Text style={styles.headerBtnText}>📄 Import Excel</Text>
-          </Pressable>
           <Pressable style={styles.headerBtn} onPress={() => router.push('/duplicates')}>
             <Text style={styles.headerBtnText}>
               ⧉ Duplicates{duplicateCount > 0 ? ` (${duplicateCount})` : ''}
@@ -130,21 +136,26 @@ export default function Dashboard() {
       <ScrollView contentContainerStyle={{ padding: spacing.md }}>
         {needsBackupReminder && (
           <Card style={styles.reminderCard}>
-            <Text style={styles.reminderTitle}>
-              ⚠️ {lastBackupAt === null ? "You haven't backed up yet" : `No backup in ${backupDays} days`}
-            </Text>
-            <Text style={styles.reminderBody}>
-              Everything is stored only on this device. Back up so a lost or reset device doesn't
-              mean lost records.
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: spacing.sm }}>
-              <Button label="Remind me in 3 days" variant="secondary" onPress={handleSnooze} style={{ flex: 1 }} />
-              <Button
-                label={backingUp ? 'Backing up…' : 'Backup Now'}
-                onPress={handleBackupNow}
-                loading={backingUp}
-                style={{ flex: 1 }}
-              />
+            <View style={styles.reminderRow}>
+              <View style={styles.reminderText}>
+                <Text style={styles.reminderTitle}>
+                  ⚠️ {lastBackupAt === null ? "You haven't backed up yet" : `No backup in ${backupDays} days`}
+                </Text>
+                <Text style={styles.reminderBody}>
+                  Everything is stored only on this device. Back up so a lost or reset device
+                  doesn't mean lost records.
+                </Text>
+              </View>
+              <View style={styles.reminderActions}>
+                <Button label="Remind me in 3 days" variant="secondary" size="sm" onPress={handleSnooze} />
+                <Button
+                  label={backingUp ? 'Backing up…' : 'Backup Now'}
+                  variant="accent"
+                  size="sm"
+                  onPress={handleBackupNow}
+                  loading={backingUp}
+                />
+              </View>
             </View>
           </Card>
         )}
@@ -153,19 +164,27 @@ export default function Dashboard() {
           <Text style={styles.count}>
             {sections.length} section{sections.length !== 1 ? 's' : ''}
           </Text>
-          <Button label="+ Add Section" onPress={() => setShowAdd(true)} />
+          <View style={styles.toolbarActions}>
+            <Button
+              label="📄 Import Excel"
+              variant="secondary"
+              onPress={() => router.push('/import-excel')}
+              style={styles.importBtn}
+            />
+            <Button label="+ Add Section" variant="accent" onPress={() => setShowAdd(true)} />
+          </View>
         </View>
 
         {sections.length === 0 && (
-          <Card style={{ alignItems: 'center', padding: spacing.xl }}>
-            <Text style={{ color: colors.textMuted, marginBottom: 8 }}>No sections yet.</Text>
-            <Text style={{ color: colors.textMuted, fontSize: 13 }}>
+          <Card style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>No sections yet.</Text>
+            <Text style={styles.emptyBody}>
               Tap "Add Section" to create your first class (e.g. VALOR).
             </Text>
           </Card>
         )}
 
-        <View style={{ gap: spacing.sm }}>
+        <View style={styles.sectionList}>
           {sections.map((s) => (
             <Pressable key={s.id} onPress={() => router.push(`/section/${s.id}`)}>
               <Card>
@@ -177,18 +196,21 @@ export default function Dashboard() {
                       subject{s.subjects.length !== 1 ? 's' : ''}
                     </Text>
                   </View>
-                  <Pressable
-                    style={styles.smallBtnBlue}
-                    onPress={() => {
-                      setDuplicating(s);
-                      setDupName(`${s.name} (COPY)`);
-                    }}
-                  >
-                    <Text style={styles.smallBtnBlueText}>⧉ Duplicate</Text>
-                  </Pressable>
-                  <Pressable style={styles.smallBtnRed} onPress={() => handleDelete(s.id)}>
-                    <Text style={styles.smallBtnRedText}>Delete</Text>
-                  </Pressable>
+                  <View style={styles.sectionActions}>
+                    <Pressable
+                      style={styles.smallBtnBlue}
+                      onPress={() => {
+                        setDuplicating(s);
+                        setDupName(`${s.name} (COPY)`);
+                      }}
+                    >
+                      <Text style={styles.smallBtnBlueText}>⧉ Duplicate</Text>
+                    </Pressable>
+                    <Pressable style={styles.smallBtnRed} onPress={() => handleDelete(s.id)}>
+                      <Text style={styles.smallBtnRedText}>Delete</Text>
+                    </Pressable>
+                    <Text style={styles.sectionChevron}>›</Text>
+                  </View>
                 </View>
               </Card>
             </Pressable>
@@ -208,7 +230,7 @@ export default function Dashboard() {
           value={newGrade}
           onChange={setNewGrade}
         />
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: spacing.lg }}>
+        <View style={styles.modalActions}>
           <Button label="Cancel" variant="secondary" onPress={() => setShowAdd(false)} style={{ flex: 1 }} />
           <Button label="Save" onPress={handleAdd} style={{ flex: 1 }} />
         </View>
@@ -223,7 +245,7 @@ export default function Dashboard() {
           </Text>
         )}
         <Field label="New Copy Name" value={dupName} onChangeText={setDupName} autoFocus />
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: spacing.sm }}>
+        <View style={styles.dupActions}>
           <Button label="Cancel" variant="secondary" onPress={() => setDuplicating(null)} style={{ flex: 1 }} />
           <Button label="Duplicate" onPress={handleDuplicateConfirm} style={{ flex: 1 }} />
         </View>
@@ -234,23 +256,48 @@ export default function Dashboard() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  header: { backgroundColor: colors.maroon, paddingHorizontal: spacing.md, paddingBottom: 12 },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 8 },
-  headerActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+
+  // PWA `.header` (styles/theme.css): maroon bar, 14px×16px padding, title 18/700.
+  header: {
+    backgroundColor: colors.maroon,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: spacing.md,
+    paddingBottom: 14,
+  },
+  headerTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
+  headerActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' },
+  // PWA header pill (pages/Dashboard.tsx:149-190): rgba(255,255,255,0.2), radius 8, 13px, no weight set.
   headerBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: tints.onPrimarySoft,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: 8,
+    borderRadius: radii.sm,
   },
-  headerBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  headerBtnText: { color: '#FFFFFF', fontSize: 13 },
+
+  // PWA backup-reminder card (pages/Dashboard.tsx:196-235): text left, buttons right, both wrap.
   reminderCard: {
     marginBottom: spacing.md,
-    backgroundColor: 'rgba(139,38,38,0.06)',
-    borderColor: 'rgba(139,38,38,0.3)',
+    backgroundColor: REMINDER_BG,
+    borderColor: REMINDER_BORDER,
   },
+  reminderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  reminderText: { flexShrink: 1 },
   reminderTitle: { fontWeight: '700', color: colors.maroon, fontSize: 14 },
-  reminderBody: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
+  reminderBody: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  reminderActions: { flexDirection: 'row', gap: 8, flexShrink: 0 },
+
+  // PWA toolbar (pages/Dashboard.tsx:238-257): count left, actions right.
   toolbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -258,23 +305,44 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   count: { fontSize: 14, color: colors.textMuted },
-  sectionRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  toolbarActions: { flexDirection: 'row', gap: 8 },
+  // PWA overrides the Import Excel button's padding to 10px×14px (pages/Dashboard.tsx:250).
+  importBtn: { paddingVertical: 10, paddingHorizontal: 14 },
+
+  // PWA empty state (pages/Dashboard.tsx:366-376): centered text, 32px padding.
+  emptyCard: { alignItems: 'center', padding: spacing.xl },
+  emptyTitle: { color: colors.textMuted, fontSize: 16, marginBottom: 12, textAlign: 'center' },
+  emptyBody: { color: colors.textMuted, fontSize: 13, textAlign: 'center' },
+
+  // PWA section list (pages/Dashboard.tsx:378-447): 12px gap between cards.
+  sectionList: { gap: 12 },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionName: { fontWeight: '700', fontSize: 17, color: colors.maroon },
   sectionMeta: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  sectionActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  // PWA chips (pages/Dashboard.tsx:414-442): radius 6 (not the 8px `--radius-sm`), 12px, no weight set.
   smallBtnBlue: {
-    backgroundColor: '#eef2fb',
+    backgroundColor: colors.infoBg,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: radii.sm,
+    borderRadius: 6,
   },
-  smallBtnBlueText: { color: '#2b4a8b', fontSize: 12, fontWeight: '600' },
+  smallBtnBlueText: { color: colors.info, fontSize: 12 },
   smallBtnRed: {
-    backgroundColor: '#fce8e8',
+    backgroundColor: colors.errorBg,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: radii.sm,
+    borderRadius: 6,
   },
-  smallBtnRedText: { color: colors.maroon, fontSize: 12, fontWeight: '600' },
+  smallBtnRedText: { color: colors.maroon, fontSize: 12 },
+  // PWA row chevron (pages/Dashboard.tsx:443): accent-orange, 20px.
+  sectionChevron: { color: colors.orange, fontSize: 20 },
+
   fieldLabelSpaced: { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 6 },
+  // PWA Add Section modal: the grade field has marginBottom 20 before the buttons (pages/Dashboard.tsx:481).
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  // PWA Duplicate modal: the field div is marginBottom 20 (pages/Dashboard.tsx:535); `Field` already
+  // contributes 12px, so add only the remaining 8px.
+  dupActions: { flexDirection: 'row', gap: 10, marginTop: spacing.sm },
   dupHelp: { fontSize: 12, color: colors.textMuted, marginBottom: spacing.md },
 });

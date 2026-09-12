@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing } from '@/theme/theme';
+import { colors, radii, spacing, tints } from '@/theme/theme';
 
 interface Props {
   title: string;
@@ -14,7 +14,7 @@ interface Props {
 export function Header({ title, subtitle, onBack, rightLabel, onRightPress }: Props) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+    <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
       <View style={styles.row}>
         {onBack ? (
           <Pressable onPress={onBack} hitSlop={10} style={styles.backBtn}>
@@ -46,24 +46,28 @@ export function Header({ title, subtitle, onBack, rightLabel, onRightPress }: Pr
 }
 
 const styles = StyleSheet.create({
+  // PWA `.header` — maroon, padding 14px 16px, title 18px/700
   header: {
     backgroundColor: colors.maroon,
     paddingHorizontal: spacing.md,
-    paddingBottom: 12,
+    paddingBottom: 14,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   backBtn: { width: 32 },
-  backText: { color: '#fff', fontSize: 22 },
-  title: { color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  backText: { color: '#FFFFFF', fontSize: 20 },
+  title: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', textAlign: 'center' },
   subtitle: { color: 'rgba(255,255,255,0.85)', fontSize: 11, textAlign: 'center', marginTop: 2 },
+  // the PWA's header action pill (e.g. Dashboard's ⚙ / Logout)
   rightBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: tints.onPrimarySoft,
     paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    borderRadius: radii.sm,
   },
-  rightText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  // The PWA's header pills set no font-weight, so they render at the default
+  // 400 — matching that keeps this in step with the screen-local pills.
+  rightText: { color: '#FFFFFF', fontSize: 13 },
 });

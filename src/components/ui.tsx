@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Pressable,
   Text,
@@ -6,64 +6,121 @@ import {
   StyleSheet,
   ActivityIndicator,
   View,
+  StyleProp,
+  TextStyle,
   ViewStyle,
   Modal as RNModal,
 } from 'react-native';
-import { colors, radii, spacing } from '@/theme/theme';
+import { colors, radii, shadows, spacing, tints } from '@/theme/theme';
+
+/**
+ * Shared widgets mirroring the PWA's `styles/theme.css` classes and the inline
+ * markup its pages repeat (modal overlays, form fields). The class each widget
+ * stands in for is named in the comments so the two codebases stay traceable.
+ */
+
+type ButtonVariant = 'primary' | 'accent' | 'outline' | 'secondary' | 'danger';
+type ButtonSize = 'md' | 'sm';
 
 interface ButtonProps {
   label: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'danger';
+  variant?: ButtonVariant;
+  /** PWA uses a compact `.btn` (`padding: 8px 12px; font-size: 13px`) for
+   *  toolbar rows like Attendance's "Copy Yesterday" / "Clear Day". */
+  size?: ButtonSize;
   loading?: boolean;
   disabled?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
-export function Button({ label, onPress, variant = 'primary', loading, disabled, style }: ButtonProps) {
-  const bg =
-    variant === 'primary' ? colors.maroon : variant === 'danger' ? colors.danger : colors.surface;
-  const textColor = variant === 'secondary' ? colors.maroon : '#FFFFFF';
-  const borderColor = variant === 'secondary' ? colors.maroon : 'transparent';
+/** PWA `.btn` + `.btn-primary` / `.btn-accent` / `.btn-outline`. */
+export function Button({
+  label,
+  onPress,
+  variant = 'primary',
+  size = 'md',
+  loading,
+  disabled,
+  style,
+}: ButtonProps) {
+  // `secondary` is the name older screens used; it means the same thing as the
+  // PWA's `.btn-outline`, so both spellings resolve to one look.
+  const outlined = variant === 'outline' || variant === 'secondary' || variant === 'danger';
+
+  // PWA `.btn-primary:hover` / `.btn-accent:hover` — on touch there is no
+  // hover, so the darker/lighter token is the pressed state instead.
+  const pressedBg =
+    variant === 'accent' ? colors.orangeLight : variant === 'primary' ? colors.maroonDark : tints.primary12;
+  const bg = variant === 'accent' ? colors.orange : variant === 'primary' ? colors.maroon : 'transparent';
+  const textColor = outlined ? (variant === 'danger' ? colors.danger : colors.maroon) : '#FFFFFF';
 
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
       style={({ pressed }) => [
-        styles.base,
-        { backgroundColor: bg, borderColor, opacity: pressed ? 0.85 : disabled ? 0.5 : 1 },
+        styles.btn,
+        size === 'sm' && styles.btnSm,
+        {
+          backgroundColor: pressed ? pressedBg : bg,
+          borderWidth: outlined ? 2 : 0,
+          borderColor: outlined ? (variant === 'danger' ? colors.danger : colors.maroon) : 'transparent',
+          opacity: disabled ? 0.5 : 1,
+        },
         style,
       ]}
     >
       {loading ? (
         <ActivityIndicator color={textColor} />
       ) : (
-        <Text style={[styles.label, { color: textColor }]}>{label}</Text>
+        <Text style={[styles.btnLabel, size === 'sm' && styles.btnLabelSm, { color: textColor }]}>
+          {label}
+        </Text>
       )}
     </Pressable>
   );
 }
 
-export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+/** PWA `.card`. */
+export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
+/**
+ * The PWA draws two overlay shapes by hand: a centred dialog on a
+ * `rgba(0,0,0,0.4)` backdrop (Dashboard's "Add Section") and a bottom sheet on
+ * `rgba(0,0,0,0.45)` with a 16px top-radius (Learners' "Bulk Upload Names").
+ * `variant` picks between them.
+ */
 export function Modal({
   visible,
   onClose,
   children,
-  maxWidth = 380,
+  maxWidth,
+  variant = 'center',
 }: {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
   maxWidth?: number;
+  variant?: 'center' | 'sheet';
 }) {
+  const sheet = variant === 'sheet';
   return (
     <RNModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.modalBackdrop} onPress={onClose}>
-        <Pressable style={[styles.modalCard, { maxWidth }]} onPress={(e) => e.stopPropagation()}>
+      <Pressable
+        style={[styles.modalBackdrop, sheet ? styles.backdropSheet : styles.backdropCenter]}
+        onPress={onClose}
+      >
+        <Pressable
+          style={[
+            styles.modalCard,
+            sheet ? styles.modalSheet : styles.modalDialog,
+            { maxWidth: maxWidth ?? (sheet ? 480 : 360) },
+          ]}
+          onPress={(e) => e.stopPropagation()}
+        >
           {children}
         </Pressable>
       </Pressable>
@@ -71,12 +128,27 @@ export function Modal({
   );
 }
 
-export function ModalTitle({ children }: { children: React.ReactNode }) {
-  return <Text style={styles.modalTitle}>{children}</Text>;
+/**
+ * PWA modal headings are bare `<h2>` tags — theme.css resets their margins but
+ * not their font-size, so the browser renders them at the UA default 1.5em =
+ * 24px bold. The PWA only overrides the colour and the bottom margin, so match
+ * that here; screens whose PWA modal uses a tighter `marginBottom: 6/8` pass it
+ * through `style`.
+ */
+export function ModalTitle({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<TextStyle>;
+}) {
+  return <Text style={[styles.modalTitle, style]}>{children}</Text>;
 }
 
 interface FieldProps {
-  label: string;
+  /** The PWA only labels some of its inputs (e.g. Learners' quick-add name box
+   *  and bulk-upload textarea have none), so this is optional. */
+  label?: string;
   value: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
@@ -85,8 +157,14 @@ interface FieldProps {
   keyboardType?: 'default' | 'numeric';
   multiline?: boolean;
   numberOfLines?: number;
+  secureTextEntry?: boolean;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  /** For the inputs the PWA leaves unlabelled, so they keep a screen-reader
+   *  name when no visible label is rendered. */
+  accessibilityLabel?: string;
 }
 
+/** PWA's label + `<input className="input">` pair. */
 export function Field({
   label,
   value,
@@ -97,20 +175,34 @@ export function Field({
   keyboardType = 'default',
   multiline,
   numberOfLines,
+  secureTextEntry,
+  autoCapitalize,
+  accessibilityLabel,
 }: FieldProps) {
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={{ marginBottom: spacing.sm }}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+    <View style={styles.field}>
+      {!!label && <Text style={styles.fieldLabel}>{label}</Text>}
       <TextInput
-        style={[styles.input, multiline && { height: 22 * (numberOfLines ?? 6), textAlignVertical: 'top' }]}
+        style={[
+          styles.input,
+          // `.input:focus { border-color: var(--color-primary) }`
+          focused && { borderColor: colors.maroon },
+          multiline && { height: 22 * (numberOfLines ?? 6), textAlignVertical: 'top' },
+        ]}
         value={value}
         onChangeText={onChangeText}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         placeholder={placeholder}
         placeholderTextColor={colors.textMuted}
         autoFocus={autoFocus}
         keyboardType={keyboardType}
         multiline={multiline}
         numberOfLines={numberOfLines}
+        secureTextEntry={secureTextEntry}
+        autoCapitalize={autoCapitalize}
+        accessibilityLabel={accessibilityLabel ?? label}
       />
       {!!helperText && <Text style={styles.helperText}>{helperText}</Text>}
     </View>
@@ -176,77 +268,91 @@ export function OptionList<T extends string | number>({
 }
 
 const styles = StyleSheet.create({
-  base: {
-    paddingVertical: 14,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
+  // .btn — display:inline-flex; gap:8px; padding:12px 20px; radius 8; font 15/600
+  btn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: radii.sm,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  // the PWA's compact toolbar button: padding 8px 12px
+  btnSm: { paddingVertical: 8, paddingHorizontal: 12 },
+  btnLabel: { fontSize: 15, fontWeight: '600' },
+  btnLabelSm: { fontSize: 13 },
+
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radii.lg,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
+    ...shadows.card,
   },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.md,
-  },
+
+  modalBackdrop: { flex: 1, padding: spacing.md },
+  backdropCenter: { alignItems: 'center', justifyContent: 'center', backgroundColor: tints.overlay },
+  backdropSheet: { alignItems: 'flex-end', justifyContent: 'center', backgroundColor: tints.overlaySheet, padding: 0 },
   modalCard: {
     width: '100%',
     backgroundColor: colors.surface,
-    borderRadius: radii.lg,
     padding: spacing.lg,
   },
+  // the PWA's centred modal is a `.card` (radius 12) with inline padding 24
+  modalDialog: { borderRadius: radii.md },
+  // width 100%, maxWidth 480, radius 16 16 0 0, maxHeight 85dvh
+  modalSheet: {
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    maxHeight: '85%',
+  },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.maroon,
     marginBottom: spacing.md,
   },
+
+  field: { marginBottom: 12 },
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.text,
     marginBottom: 6,
   },
+  // .input — padding:12px 14px; border:1.5px; radius 8; font 15; bg = surface
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 10,
-    fontSize: 14,
+    borderRadius: radii.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
     color: colors.text,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   helperText: {
     fontSize: 11,
     color: colors.textMuted,
     marginTop: 4,
   },
+
   segmentRow: {
     flexDirection: 'row',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: radii.md,
+    borderRadius: radii.sm,
     overflow: 'hidden',
   },
   segmentBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   segmentBtnActive: {
     backgroundColor: colors.maroon,
@@ -257,19 +363,19 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   segmentLabelActive: {
-    color: '#fff',
+    color: '#FFFFFF',
   },
   optionRow: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.background,
+    borderRadius: radii.sm,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: colors.surface,
   },
   optionRowActive: {
     borderColor: colors.maroon,
-    backgroundColor: '#FBEFE9',
+    backgroundColor: tints.primary12,
   },
   optionLabel: {
     fontSize: 13,

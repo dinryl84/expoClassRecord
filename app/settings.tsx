@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
+import { Header } from '@/components/Header';
 import { Button, Card } from '@/components/ui';
 import { colors, spacing } from '@/theme/theme';
 import { createBackup, pickAndRestoreBackup, getLastBackupAt, formatBackupDate } from '@/db/backup';
@@ -55,50 +56,52 @@ export default function Settings() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.md }}>
-      <Text style={styles.title}>Settings</Text>
-      {!!username && <Text style={styles.subtitle}>Signed in as {username}</Text>}
+    <View style={styles.screen}>
+      <Header title="Settings" onBack={() => router.back()} />
+      <ScrollView contentContainerStyle={{ padding: spacing.md }}>
+        {!!username && <Text style={styles.signedIn}>Signed in as {username}</Text>}
 
-      <Card style={{ marginTop: spacing.lg }}>
-        <Text style={styles.cardTitle}>Backup & Restore</Text>
-        <Text style={styles.cardBody}>
-          Last backup: {formatBackupDate(lastBackup)}
-        </Text>
-        <Text style={[styles.cardBody, { marginTop: spacing.xs }]}>
-          Backup files are interchangeable with the web (PWA) version of this app — you can
-          restore a backup made on either one here.
-        </Text>
-        <Button
-          label="Create backup"
-          onPress={handleBackup}
-          loading={busy === 'backup'}
-          disabled={busy !== null}
-          style={{ marginTop: spacing.md }}
-        />
-        <Button
-          label="Restore from backup…"
-          onPress={handleRestore}
-          variant="secondary"
-          loading={busy === 'restore'}
-          disabled={busy !== null}
-          style={{ marginTop: spacing.sm }}
-        />
-      </Card>
+        <Card style={{ marginTop: spacing.sm }}>
+          {/* PWA card heading is a plain <div>: default size (16px) / 600 / text, marginBottom 4 */}
+          <Text style={styles.cardTitle}>Backup & Restore</Text>
+          {/* PWA "Last backup:" line: 12px muted, with the date in bold text colour */}
+          <Text style={[styles.cardBody, { marginBottom: 10 }]}>
+            Last backup: <Text style={styles.cardBodyStrong}>{formatBackupDate(lastBackup)}</Text>
+          </Text>
+          <Text style={[styles.cardBody, { marginBottom: 10 }]}>
+            Backup files are interchangeable with the web (PWA) version of this app — you can
+            restore a backup made on either one here.
+          </Text>
+          {/* PWA backup action is `.btn-accent` (orange), full width */}
+          <Button
+            label="Create backup"
+            variant="accent"
+            onPress={handleBackup}
+            loading={busy === 'backup'}
+            disabled={busy !== null}
+          />
+          {/* PWA restore action is `.btn-outline` (maroon outline), full width */}
+          <Button
+            label="Restore from backup…"
+            onPress={handleRestore}
+            variant="secondary"
+            loading={busy === 'restore'}
+            disabled={busy !== null}
+            style={{ marginTop: spacing.sm }}
+          />
+        </Card>
 
-      <Button
-        label="Log out"
-        onPress={handleLogout}
-        variant="danger"
-        style={{ marginTop: spacing.xl }}
-      />
-    </ScrollView>
+        <Button label="Log out" onPress={handleLogout} variant="danger" style={{ marginTop: spacing.xl }} />
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  title: { fontSize: 22, fontWeight: '700', color: colors.text },
-  subtitle: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
-  cardBody: { fontSize: 13, color: colors.textMuted },
+  signedIn: { fontSize: 13, color: colors.textMuted, marginTop: spacing.sm, marginBottom: spacing.xs },
+  // PWA plain <div> card headings (Backup & Restore / Storage Protection): 16px / 600 / text
+  cardTitle: { fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 4 },
+  cardBody: { fontSize: 12, color: colors.textMuted },
+  cardBodyStrong: { color: colors.text, fontWeight: '700' },
 });

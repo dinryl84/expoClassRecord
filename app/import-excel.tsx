@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Header } from '@/components/Header';
 import { Button, Card } from '@/components/ui';
-import { colors, spacing } from '@/theme/theme';
+import { colors, radii, spacing, tints } from '@/theme/theme';
 import { pickAndImportClassRecord, type FullImportResult } from '@/utils/importExcel';
 import { getTemplate, deleteTemplate } from '@/db/repositories/templates';
 
@@ -81,8 +81,6 @@ export default function ImportExcel() {
             style={{ marginTop: spacing.md }}
           />
 
-          {!!error && <Text style={styles.error}>{error}</Text>}
-
           {result && (
             <View style={styles.resultBox}>
               <Text style={styles.resultTitle}>✅ Import complete</Text>
@@ -93,6 +91,12 @@ export default function ImportExcel() {
                 onPress={() => router.replace(`/section/${result.sectionId}`)}
                 style={{ marginTop: spacing.sm }}
               />
+            </View>
+          )}
+
+          {!!error && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
         </Card>
@@ -126,15 +130,24 @@ export default function ImportExcel() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  title: { fontSize: 15, fontWeight: '700', color: colors.maroon, marginBottom: spacing.sm },
+  // PWA ImportData `<h2>` inside a .card: fontSize 16, colour var(--color-primary)
+  title: { fontSize: 16, fontWeight: '700', color: colors.maroon, marginBottom: spacing.sm },
   body: { fontSize: 13, color: colors.textMuted, marginBottom: spacing.sm, lineHeight: 19 },
-  error: { color: colors.danger, fontSize: 13, marginTop: spacing.md },
+  // PWA ImportData error note: pad 12, radius 8, bg color-mix(primary 12%), text 13/primary
+  errorBox: {
+    marginTop: 14,
+    padding: 12,
+    borderRadius: radii.sm,
+    backgroundColor: tints.primary12,
+  },
+  errorText: { fontSize: 13, color: colors.maroon },
+  // PWA ImportData success log: pad 12, radius 8, bg color-mix(green 15%), text 13/600/green
   resultBox: {
-    marginTop: spacing.md,
-    padding: spacing.sm,
-    borderRadius: 10,
-    backgroundColor: '#E9F0E3',
+    marginTop: 14,
+    padding: 12,
+    borderRadius: radii.sm,
+    backgroundColor: tints.green15,
   },
   resultTitle: { fontWeight: '700', color: colors.green, marginBottom: 4 },
-  resultText: { fontSize: 13, color: colors.text },
+  resultText: { fontSize: 13, color: colors.green, fontWeight: '600' },
 });
