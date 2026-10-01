@@ -44,6 +44,13 @@
         "projectId": "8b7b95b2-c846-4a27-b4a9-dfe2477cd749"
       }
     },
-    "owner": "dinryl84"
+    "owner": "dinryl84",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8b7b95b2-c846-4a27-b4a9-dfe2477cd749"
+    },
+    "ios": {}
   }
 }

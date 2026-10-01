@@ -7,6 +7,7 @@ import {
   Pressable,
   TextInput,
   Alert,
+  Keyboard,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Header } from '@/components/Header';
@@ -27,6 +28,8 @@ type Tab = 'ww' | 'pt' | 'qa';
 type Term = 1 | 2 | 3;
 type Mode = 'encode' | 'grades';
 type ViewStyle = 'grid' | 'focus';
+/** The score box currently being typed in. learnerId null = a Highest Possible Score box. */
+type ActiveField = { learnerId: string | null; field: string; index: number | null; label: string };
 
 const EDIT_HIGHLIGHT_COLORS = [
   { id: 'blue', hex: '#1565C0' },
@@ -101,6 +104,22 @@ export default function ScoreEncoding() {
   const [printing, setPrinting] = useState<'print' | 'pdf' | null>(null);
   const [highlightEdits, setHighlightEdits] = useState(true);
   const [highlightColor, setHighlightColor] = useState(EDIT_HIGHLIGHT_COLORS[0].hex);
+  // Typing aid: while the on-screen keyboard is open it hides the score boxes,
+  // so we show a bar above the keyboard with what is being typed.
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [activeField, setActiveField] = useState<ActiveField | null>(null);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardOpen(false);
+      setActiveField(null);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (id) setSection(getSectionById(id));
@@ -337,6 +356,34 @@ export default function ScoreEncoding() {
     router.push(`/section/${section.id}/learner/${learnerId}`);
   };
 
+  const trackField = (learnerId: string | null, c: { field: string; label: string; index: number | null }) => ({
+    onFocus: () => setActiveField({ learnerId, field: c.field, index: c.index, label: c.label }),
+    onBlur: () =>
+      setActiveField((prev) =>
+        prev && prev.learnerId === learnerId && prev.field === c.field && prev.index === c.index ? null : prev
+      ),
+  });
+
+  const renderTypingBar = () => {
+    if (!keyboardOpen || !activeField) return null;
+    const isHpsBox = activeField.learnerId === null;
+    const scores = isHpsBox ? hps : scoresMap[activeField.learnerId!] || emptyComponentScores();
+    const value = getFieldValue(scores, activeField.field, activeField.index);
+    const maxScore = getFieldValue(hps, activeField.field, activeField.index);
+    const learner = isHpsBox ? null : roster.find((l) => l.id === activeField.learnerId);
+    return (
+      <View style={styles.typingBar}>
+        <Text style={styles.typingBarWho} numberOfLines={1}>
+          {isHpsBox ? 'Highest Possible Score' : learner?.name ?? ''}
+        </Text>
+        <Text style={styles.typingBarValue}>
+          {activeField.label}: {value != null ? value : '—'}
+          {!isHpsBox && maxScore != null ? <Text style={styles.typingBarMax}>  / {maxScore}</Text> : null}
+        </Text>
+      </View>
+    );
+  };
+
   const renderGridCell = (
     learnerId: string | null,
     c: (typeof cols)[number],
@@ -351,6 +398,7 @@ export default function ScoreEncoding() {
           edited && { color: highlightColor, fontWeight: '700' },
         ]}
         keyboardType="numeric"
+        {...trackField(learnerId, c)}
         value={value?.toString() ?? ''}
         onChangeText={(t) =>
           isHps
@@ -519,6 +567,7 @@ export default function ScoreEncoding() {
                 <TextInput
                   style={styles.hpsInput}
                   keyboardType="numeric"
+                  {...trackField(null, c)}
                   value={getFieldValue(hps, c.field, c.index)?.toString() ?? ''}
                   onChangeText={(t) => updateHps(c.field, c.index, t)}
                   placeholder="—"
@@ -544,6 +593,7 @@ export default function ScoreEncoding() {
                       edited && { borderColor: highlightColor, color: highlightColor, fontWeight: '700' },
                     ]}
                     keyboardType="numeric"
+                    {...trackField(current.id, c)}
                     value={value?.toString() ?? ''}
                     onChangeText={(t) => updateScore(current.id, c.field, c.index, t)}
                     placeholder="—"
@@ -596,24 +646,32 @@ export default function ScoreEncoding() {
           value={term}
           onChange={setTerm}
         />
-        <Button
-          label={exporting ? 'Exporting…' : '📤 Export to Excel'}
-          variant="secondary"
-          onPress={handleExport}
-          loading={exporting}
-          style={{ marginTop: spacing.sm }}
-        />
-        <Button
-          label={savingToFolder ? 'Saving…' : '💾 Save to Folder'}
-          variant="secondary"
-          onPress={handleSaveToFolder}
-          loading={savingToFolder}
-          style={{ marginTop: spacing.sm }}
-        />
+        {/* Hidden while the keyboard is open so the score boxes get more room. */}
+        {!keyboardOpen && (
+          <>
+            <Button
+              label={exporting ? 'Exporting…' : '📤 Export to Excel'}
+              variant="secondary"
+              onPress={handleExport}
+              loading={exporting}
+              style={{ marginTop: spacing.sm }}
+            />
+            <Button
+              label={savingToFolder ? 'Saving…' : '💾 Save to Folder'}
+              variant="secondary"
+              onPress={handleSaveToFolder}
+              loading={savingToFolder}
+              style={{ marginTop: spacing.sm }}
+            />
+          </>
+        )}
       </View>
 
       {mode === 'encode' ? (
-        <ScrollView contentContainerStyle={{ padding: spacing.md, paddingBottom: 40 }}>
+        <ScrollView
+          contentContainerStyle={{ padding: spacing.md, paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Highlight controls for duplicates */}
           {section.isDuplicate && (
             <Card style={{ marginBottom: spacing.md }}>
@@ -852,6 +910,7 @@ export default function ScoreEncoding() {
           </View>
         </ScrollView>
       )}
+      {mode === 'encode' ? renderTypingBar() : null}
     </View>
   );
 }
@@ -876,6 +935,16 @@ function SummaryStat({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   termBar: { padding: spacing.md, paddingBottom: 0 },
+  typingBar: {
+    backgroundColor: colors.surface,
+    borderTopWidth: 2,
+    borderTopColor: colors.maroon,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+  },
+  typingBarWho: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
+  typingBarValue: { fontSize: 26, fontWeight: '700', color: colors.maroon, marginTop: 2 },
+  typingBarMax: { fontSize: 16, fontWeight: '600', color: colors.textMuted },
   viewStyleRow: { marginBottom: spacing.xs },
   hpsToggle: { marginTop: spacing.md },
   hpsToggleText: { color: colors.maroon, fontWeight: '600', fontSize: 13, marginBottom: 6 },
