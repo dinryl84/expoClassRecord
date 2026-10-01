@@ -9,6 +9,8 @@ import { getSectionById, putSection } from '@/db/repositories/sections';
 import { parseBulkNames, splitByGender } from '@/utils/bulkUpload';
 import { reconcileLearners } from '@/utils/learnerMatch';
 import { uuid } from '@/utils/id';
+import { deleteLearnerPermanently, getLearnerRecordCounts } from '@/db/learnerDelete';
+import { createBackup, getLastBackupAt, formatBackupDate } from '@/db/backup';
 import type { Learner, Section } from '@/types';
 export default function Learners() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -72,15 +74,49 @@ export default function Learners() {
     setManualName('');
   };
 
-  const handleDelete = (learnerId: string) => {
-    Alert.alert('Remove this learner?', undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () => saveLearners(section.learners.filter((l) => l.id !== learnerId)),
-      },
-    ]);
+  const performDelete = (learner: Learner) => {
+    try {
+      deleteLearnerPermanently(section, learner.id);
+      load();
+    } catch (e: any) {
+      Alert.alert('Delete failed', e?.message ?? 'Something went wrong. The learner was not deleted.');
+    }
+  };
+
+  const confirmAfterBackup = (learner: Learner) => {
+    Alert.alert(
+      'Backup created',
+      `Make sure you saved the backup file somewhere safe (for example Google Drive).\n\nPermanently delete ${learner.name} now?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete Permanently', style: 'destructive', onPress: () => performDelete(learner) },
+      ]
+    );
+  };
+
+  const backupThenConfirm = async (learner: Learner) => {
+    try {
+      await createBackup();
+      confirmAfterBackup(learner);
+    } catch (e: any) {
+      Alert.alert('Backup failed', `${e?.message ?? 'Something went wrong.'}\n\n${learner.name} was NOT deleted.`);
+    }
+  };
+
+  const handleDelete = (learner: Learner) => {
+    const counts = getLearnerRecordCounts(section.id, learner.id);
+    const lastBackup = formatBackupDate(getLastBackupAt());
+    Alert.alert(
+      `Permanently delete ${learner.name}?`,
+      `This will erase this learner's scores in every subject, ${counts.attendance} attendance record${
+        counts.attendance !== 1 ? 's' : ''
+      } and ${counts.notes} note${counts.notes !== 1 ? 's' : ''}. This cannot be undone.\n\nLast backup: ${lastBackup}\n\nWe recommend backing up first.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Back Up First', onPress: () => backupThenConfirm(learner) },
+        { text: 'Delete Permanently', style: 'destructive', onPress: () => performDelete(learner) },
+      ]
+    );
   };
 
   const openReport = (learnerId: string) => router.push(`/section/${section.id}/learner/${learnerId}`);
@@ -104,7 +140,7 @@ export default function Learners() {
             <Pressable onPress={() => openReport(l.id)}>
               <Text style={styles.linkBlue}>📊 Report</Text>
             </Pressable>
-            <Pressable onPress={() => handleDelete(l.id)}>
+            <Pressable onPress={() => handleDelete(l)}>
               <Text style={styles.linkRed}>Remove</Text>
             </Pressable>
           </View>
