@@ -135,12 +135,13 @@ export default function Learners() {
             <Text style={{ color: colors.textMuted }}>{l.order}. </Text>
             {l.name}
           </Text>
-          {/* PWA row action cluster: `display:flex; gap:6`. */}
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            <Pressable onPress={() => openReport(l.id)}>
+          {/* Stacked (Report above Remove) so the name keeps more width, the two
+              links are bigger to tap, and Remove is not right next to Report. */}
+          <View style={styles.rowActions}>
+            <Pressable onPress={() => openReport(l.id)} style={styles.rowActionBtn} hitSlop={6}>
               <Text style={styles.linkBlue}>📊 Report</Text>
             </Pressable>
-            <Pressable onPress={() => handleDelete(l)}>
+            <Pressable onPress={() => handleDelete(l)} style={styles.rowActionBtn} hitSlop={6}>
               <Text style={styles.linkRed}>Remove</Text>
             </Pressable>
           </View>
@@ -262,9 +263,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   // The PWA row text sets no font-size, inheriting the body's 16px.
-  learnerName: { fontSize: 16, color: colors.text, flexShrink: 1 },
-  linkBlue: { color: colors.info, fontSize: 13 },
-  linkRed: { color: colors.maroon, fontSize: 13 },
+  learnerName: { fontSize: 16, color: colors.text, flex: 1, paddingRight: 12 },
+  rowActions: { alignItems: 'flex-end', gap: 2 },
+  rowActionBtn: { paddingVertical: 5, paddingLeft: 8 },
+  linkBlue: { color: colors.info, fontSize: 14 },
+  linkRed: { color: colors.maroon, fontSize: 14 },
   // PWA help paragraph: fontSize 13, marginBottom 14.
   bulkHelp: { fontSize: 13, color: colors.textMuted, marginBottom: 14 },
 });
