@@ -18,6 +18,7 @@ import {
   termNameCell,
 } from './ecrCellMap';
 import { loadZipFromBase64, zipToBase64, getSheetPathMap, findPath, setMany } from './ecrXlsxIO';
+import { stripCachedFormulaValues } from './ecrStripCache';
 import type JSZip from 'jszip';
 
 /** Yields to the event loop so the UI (e.g. the "Exporting…" spinner) can render between heavy steps. */
@@ -375,6 +376,10 @@ export async function buildClassRecordFile({ section, subject }: ExportOptions):
       ...buildTermHeaderCells(school, section, subject),
       ...buildTermRawCells(males, females, getTermScores(termNum), maleAssignment.slotByLearnerId, femaleAssignment.slotByLearnerId),
     });
+    // The template's totals/grades are formulas that still carry the numbers it
+    // was saved with. Drop those stored results so no viewer shows leftover data
+    // for a term (Excel recalculates real values on open).
+    xml = stripCachedFormulaValues(xml, ECR_MAP.term.hpsRow, ECR_MAP.term.femaleFirstDataRow + ECR_MAP.term.femaleSlots - 1);
     zip.file(termPath, xml);
     await yieldToUI();
   }
@@ -388,6 +393,8 @@ export async function buildClassRecordFile({ section, subject }: ExportOptions):
       ...buildAveHeaderCells(school, section, subject),
       ...buildAveNameCells(males, females, maleAssignment.slotByLearnerId, femaleAssignment.slotByLearnerId),
     });
+    // Same as the TERM sheets: no stored results from the template's class.
+    xml = stripCachedFormulaValues(xml, ECR_MAP.term.hpsRow, ECR_MAP.term.femaleFirstDataRow + ECR_MAP.term.femaleSlots - 1);
     zip.file(avePath, xml);
     await yieldToUI();
   }

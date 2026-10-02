@@ -196,21 +196,23 @@ export default function Dashboard() {
                       subject{s.subjects.length !== 1 ? 's' : ''}
                     </Text>
                   </View>
-                  <View style={styles.sectionActions}>
-                    <Pressable
-                      style={styles.smallBtnBlue}
-                      onPress={() => {
-                        setDuplicating(s);
-                        setDupName(`${s.name} (COPY)`);
-                      }}
-                    >
-                      <Text style={styles.smallBtnBlueText}>⧉ Duplicate</Text>
-                    </Pressable>
-                    <Pressable style={styles.smallBtnRed} onPress={() => handleDelete(s.id)}>
-                      <Text style={styles.smallBtnRedText}>Delete</Text>
-                    </Pressable>
-                    <Text style={styles.sectionChevron}>›</Text>
-                  </View>
+                  <Text style={styles.sectionChevron}>›</Text>
+                </View>
+                {/* Buttons sit under the name so the name keeps the full card width
+                    (side by side they squeezed it and broke names mid-word). */}
+                <View style={styles.sectionActions}>
+                  <Pressable
+                    style={styles.smallBtnBlue}
+                    onPress={() => {
+                      setDuplicating(s);
+                      setDupName(`${s.name} (COPY)`);
+                    }}
+                  >
+                    <Text style={styles.smallBtnBlueText}>⧉ Duplicate</Text>
+                  </Pressable>
+                  <Pressable style={styles.smallBtnRed} onPress={() => handleDelete(s.id)}>
+                    <Text style={styles.smallBtnRedText}>Delete</Text>
+                  </Pressable>
                 </View>
               </Card>
             </Pressable>
@@ -302,10 +304,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: spacing.md,
   },
   count: { fontSize: 14, color: colors.textMuted },
-  toolbarActions: { flexDirection: 'row', gap: 8 },
+  toolbarActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   // PWA overrides the Import Excel button's padding to 10px×14px (pages/Dashboard.tsx:250).
   importBtn: { paddingVertical: 10, paddingHorizontal: 14 },
 
@@ -319,7 +323,7 @@ const styles = StyleSheet.create({
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionName: { fontWeight: '700', fontSize: 17, color: colors.maroon },
   sectionMeta: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
-  sectionActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionActions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   // PWA chips (pages/Dashboard.tsx:414-442): radius 6 (not the 8px `--radius-sm`), 12px, no weight set.
   smallBtnBlue: {
     backgroundColor: colors.infoBg,

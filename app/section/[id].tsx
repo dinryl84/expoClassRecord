@@ -102,6 +102,12 @@ export default function SectionDetail() {
           />
           <Button
             variant="outline"
+            label="🗓 Absences"
+            disabled={section.learners.length === 0}
+            onPress={() => router.push(`/section/${section.id}/absences`)}
+          />
+          <Button
+            variant="outline"
             label="🎓 Student Reports"
             disabled={section.learners.length === 0}
             onPress={() => router.push(`/section/${section.id}/learners`)}
