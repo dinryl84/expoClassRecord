@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -108,11 +108,25 @@ export default function ScoreEncoding() {
   // so we show a bar above the keyboard with what is being typed.
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
+  // How many pixels of the bottom of this screen the keyboard is covering.
+  // Measured on each keyboard open, so it is 0 if Android already shrank the
+  // screen for the keyboard, and the real overlap if it did not.
+  const rootRef = useRef<View>(null);
+  const [keyboardOverlap, setKeyboardOverlap] = useState(0);
 
   useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardOpen(true);
+      const keyboardTop = e.endCoordinates.screenY;
+      setTimeout(() => {
+        rootRef.current?.measureInWindow((_x, y, _w, h) => {
+          setKeyboardOverlap(Math.max(0, Math.round(y + h - keyboardTop)));
+        });
+      }, 150);
+    });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardOpen(false);
+      setKeyboardOverlap(0);
       setActiveField(null);
     });
     return () => {
@@ -626,7 +640,11 @@ export default function ScoreEncoding() {
   );
 
   return (
-    <View style={styles.screen}>
+    <View
+      ref={rootRef}
+      collapsable={false}
+      style={[styles.screen, keyboardOverlap > 0 && { paddingBottom: keyboardOverlap }]}
+    >
       <Header
         title={subject.name}
         subtitle={section.name}

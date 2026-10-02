@@ -91,6 +91,14 @@ export default function Settings() {
           />
         </Card>
 
+        <Card style={{ marginTop: spacing.md }}>
+          <Text style={styles.cardTitle}>Password</Text>
+          <Text style={[styles.cardBody, { marginBottom: 10 }]}>
+            Change the password for {username ?? 'this account'}. You need your current password.
+          </Text>
+          <Button label="Change password" variant="secondary" onPress={() => router.push('/change-password')} />
+        </Card>
+
         <Button label="Log out" onPress={handleLogout} variant="danger" style={{ marginTop: spacing.xl }} />
       </ScrollView>
     </View>

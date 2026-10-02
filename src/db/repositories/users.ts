@@ -108,3 +108,26 @@ export async function loginUser(username: string, password: string): Promise<boo
   }
   return ok;
 }
+
+/**
+ * Changes the password of an existing account. The current password must be
+ * correct. Returns false (and changes nothing) if the account does not exist
+ * or the current password is wrong.
+ */
+export async function changePassword(
+  username: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<boolean> {
+  const db = getDb();
+  const user = db.getFirstSync<AppUser>(
+    'SELECT username, passwordHash FROM users WHERE username = ?',
+    username
+  );
+  if (!user) return false;
+  const ok = await verifyPassword(currentPassword, user.passwordHash);
+  if (!ok) return false;
+  const passwordHash = await newHash(newPassword);
+  db.runSync('UPDATE users SET passwordHash = ? WHERE username = ?', passwordHash, username);
+  return true;
+}
