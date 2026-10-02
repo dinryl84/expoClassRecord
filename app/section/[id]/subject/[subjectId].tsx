@@ -649,7 +649,7 @@ export default function ScoreEncoding() {
         title={subject.name}
         subtitle={section.name}
         onBack={() => router.back()}
-        rightLabel={mode === 'encode' ? 'View Grades' : 'Back to Encoding'}
+        rightLabel={mode === 'encode' ? 'View Grades' : 'Encoding'}
         onRightPress={() => setMode(mode === 'encode' ? 'grades' : 'encode')}
       />
       <DuplicateBanner section={section} />
@@ -666,22 +666,24 @@ export default function ScoreEncoding() {
         />
         {/* Hidden while the keyboard is open so the score boxes get more room. */}
         {!keyboardOpen && (
-          <>
+          <View style={styles.exportRow}>
             <Button
               label={exporting ? 'Exporting…' : '📤 Export to Excel'}
               variant="secondary"
+              size="sm"
               onPress={handleExport}
               loading={exporting}
-              style={{ marginTop: spacing.sm }}
+              style={{ flex: 1 }}
             />
             <Button
               label={savingToFolder ? 'Saving…' : '💾 Save to Folder'}
               variant="secondary"
+              size="sm"
               onPress={handleSaveToFolder}
               loading={savingToFolder}
-              style={{ marginTop: spacing.sm }}
+              style={{ flex: 1 }}
             />
-          </>
+          </View>
         )}
       </View>
 
@@ -761,6 +763,7 @@ export default function ScoreEncoding() {
             <Button
               label={printing === 'print' ? 'Opening…' : '🖨 Print'}
               variant="secondary"
+              size="sm"
               onPress={handlePrint}
               loading={printing === 'print'}
               disabled={printing !== null}
@@ -769,6 +772,7 @@ export default function ScoreEncoding() {
             <Button
               label={printing === 'pdf' ? 'Preparing…' : '📄 Save/Share PDF'}
               variant="secondary"
+              size="sm"
               onPress={handleSharePdf}
               loading={printing === 'pdf'}
               disabled={printing !== null}
@@ -850,7 +854,7 @@ export default function ScoreEncoding() {
                       accessibilityRole="button"
                       accessibilityLabel={`Open report for ${row.learner.name}`}
                     >
-                      <Text style={styles.gradesName} numberOfLines={1}>
+                      <Text style={styles.gradesName}>
                         <Text style={{ color: colors.textMuted }}>{row.learner.order}. </Text>
                         {row.learner.gender === 'Male' ? '♂ ' : '♀ '}
                         <Text style={{ color: colors.maroon, fontWeight: '700' }}>
@@ -953,6 +957,7 @@ function SummaryStat({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   termBar: { padding: spacing.md, paddingBottom: 0 },
+  exportRow: { flexDirection: 'row', gap: 8, marginTop: spacing.sm },
   typingBar: {
     backgroundColor: colors.surface,
     borderTopWidth: 2,
@@ -1126,10 +1131,11 @@ const styles = StyleSheet.create({
   colorSwatchSelected: { borderColor: colors.text },
 
   // Grades mode
-  summaryRow: { flexDirection: 'row', gap: 8, marginBottom: spacing.md },
+  summaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.md },
   printRow: { flexDirection: 'row', gap: 8, marginBottom: spacing.md },
   statCard: {
-    flex: 1,
+    flexBasis: '47%',
+    flexGrow: 1,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,

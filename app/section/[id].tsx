@@ -93,27 +93,36 @@ export default function SectionDetail() {
           <Button
             variant="outline"
             label={`👥 Learners (${section.learners.length})`}
+            style={styles.gridBtn}
             onPress={() => router.push(`/section/${section.id}/learners`)}
           />
           <Button
             variant="outline"
             label="📋 Attendance"
+            style={styles.gridBtn}
             onPress={() => router.push(`/section/${section.id}/attendance`)}
           />
           <Button
             variant="outline"
             label="🗓 Absences"
+            style={styles.gridBtn}
             disabled={section.learners.length === 0}
             onPress={() => router.push(`/section/${section.id}/absences`)}
           />
           <Button
             variant="outline"
             label="🎓 Student Reports"
+            style={styles.gridBtn}
             disabled={section.learners.length === 0}
             onPress={() => router.push(`/section/${section.id}/learners`)}
           />
           {/* PWA's "+ Add Subject" is `.btn btn-accent` (orange), not the default maroon. */}
-          <Button variant="accent" label="+ Add Subject" onPress={() => setShowAddSubject(true)} />
+          <Button
+            variant="accent"
+            label="+ Add Subject"
+            style={styles.fullBtn}
+            onPress={() => setShowAddSubject(true)}
+          />
         </View>
 
         <Text style={styles.sectionHeading}>Subjects</Text>
@@ -231,6 +240,9 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   // PWA actions row: `display:flex; gap:10; marginBottom:20; flexWrap:wrap`.
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  // Two even columns for the four navigation buttons; Add Subject spans the full row.
+  gridBtn: { flexBasis: '47%', flexGrow: 1, paddingHorizontal: 8 },
+  fullBtn: { flexBasis: '100%' },
   // PWA `<h2 style={{ fontSize:14, color:var(--color-text-muted), marginBottom:10,
   //   textTransform:'uppercase', letterSpacing:0.5 }}>` — an <h2> is 700 by default.
   sectionHeading: {
